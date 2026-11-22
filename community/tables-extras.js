@@ -684,3 +684,141 @@ X.init = function () {
   css += '.die .die-n{font-size:1rem;font-weight:800}.die .die-s{opacity:.85}';
   var st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
 })();
+
+/* ===== Dice shelf: own, equip and redeem dice sets ===== */
+(function () {
+  'use strict';
+  var setsCache = null, shelfBtn = null;
+  var RARITY = { common: ['Common', '#6b6485', '#eee9f8'], rare: ['Rare', '#0f6c9b', '#dff3ff'], epic: ['Epic', '#7a2fc0', '#f0e3ff'], legendary: ['Legendary', '#a35a00', '#fff0cf'] };
+
+  function css() {
+    var c = '.dset-glow{box-shadow:0 0 14px 3px rgba(190,150,255,.75),0 3px 8px rgba(0,0,0,.45)!important}' +
+      '@keyframes dsparkle{0%,100%{filter:brightness(1)}50%{filter:brightness(1.35) saturate(1.2)}}' +
+      '.dset-sparkle{animation:dsparkle 1.8s ease-in-out infinite;box-shadow:0 0 12px 2px rgba(255,225,120,.8),0 3px 8px rgba(0,0,0,.45)!important}' +
+      '.dset-stripe{background-blend-mode:overlay}' +
+      '.shelf-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;max-height:58vh;overflow:auto;margin:10px 0}' +
+      '.shelf-card{border:2px solid #e6e0f5;border-radius:14px;padding:12px;background:#fff}' +
+      '.shelf-card.eq{border-color:#5B2FBE;background:#f6f2ff}.shelf-card.lock{opacity:.78}' +
+      '.shelf-prev{display:flex;gap:6px;justify-content:center;align-items:center;margin:6px 0 10px;min-height:50px;background:radial-gradient(ellipse,#2f7a52,#1d4f35);border-radius:10px;padding:8px}' +
+      '.shelf-rar{display:inline-block;font-size:.7rem;font-weight:700;border-radius:999px;padding:2px 9px}' +
+      '.shelf-wide .modal-card{max-width:760px;width:94vw}';
+    var st = document.createElement('style'); st.textContent = c; document.head.appendChild(st);
+  }
+  css();
+
+  function colors(set, sides) {
+    var p = set.palette || {};
+    return p[String(sides)] || p['*'] || ['#ffd95e', '#f2a516'];
+  }
+  function styleDie(el, set, sides) {
+    var c = colors(set, sides);
+    el.style.setProperty('background', 'linear-gradient(145deg,' + c[0] + ',' + c[1] + ')', 'important');
+    el.style.setProperty('color', set.text_color || '#fff', 'important');
+    ['glow', 'sparkle', 'stripe'].forEach(function (f) { el.classList.remove('dset-' + f); });
+    if (set.fx && set.fx !== 'none') el.classList.add('dset-' + set.fx);
+  }
+  function dieEl(set, sides, label) {
+    var el = h('div', { class: 'die d' + sides }, h('span', { class: 'die-n', text: String(label) }), h('span', { class: 'die-s', text: 'd' + sides }));
+    styleDie(el, set, sides); return el;
+  }
+  async function loadSets() {
+    if (setsCache) return setsCache;
+    var r = await sb.from('dice_sets').select('*').order('sort', { ascending: true });
+    setsCache = r.data || []; return setsCache;
+  }
+
+  /* ---- the shelf ---- */
+  async function openShelf() {
+    await sb.rpc('claim_starter_dice');
+    var sets = await loadSets();
+    var owned = {}, eq = null;
+    var o = await sb.from('user_dice').select('set_id').eq('user_id', me.id);
+    (o.data || []).forEach(function (r) { owned[r.set_id] = true; });
+    var e = await sb.from('dice_equipped').select('set_id').eq('user_id', me.id).maybeSingle();
+    eq = e.data ? e.data.set_id : (sets[0] && sets[0].id);
+    var grid = h('div', { class: 'shelf-grid' });
+    var count = sets.filter(function (s) { return owned[s.id]; }).length;
+    sets.forEach(function (s) {
+      var has = !!owned[s.id], on = has && s.id === eq, rar = RARITY[s.rarity] || RARITY.common;
+      var prev = h('div', { class: 'shelf-prev' }, [6, 8, 12, 20].map(function (sd) { return dieEl(s, sd, sd); }));
+      var action;
+      if (on) action = h('div', { style: 'font-weight:700;color:#5B2FBE', text: '✓ Equipped' });
+      else if (has) action = h('button', { class: 'join-btn', text: 'Use these dice', onclick: async function () {
+        var r = await sb.rpc('equip_dice', { p_set: s.id }); if (r.error) return toast(r.error.message); toast(s.name + ' equipped'); openShelf(); } });
+      else action = h('div', { style: 'color:var(--ink3);font-size:.82rem', text: '🔒 Locked. Redeem a code to unlock.' });
+      grid.appendChild(h('div', { class: 'shelf-card' + (on ? ' eq' : '') + (has ? '' : ' lock') },
+        prev, h('div', { style: 'font-weight:700', text: s.name }),
+        h('span', { class: 'shelf-rar', style: 'color:' + rar[1] + ';background:' + rar[2], text: rar[0] }),
+        h('div', { style: 'color:var(--ink3);font-size:.82rem;margin:6px 0', text: s.description || '' }), action));
+    });
+    var code = h('input', { type: 'text', placeholder: 'Have a dice code?', maxlength: '30', style: 'text-transform:uppercase' });
+    var redeem = h('button', { class: 'btn-outline', text: 'Redeem' });
+    redeem.onclick = async function () {
+      var v = code.value.trim(); if (!v) return;
+      var r = await sb.rpc('redeem_dice_code', { p_code: v });
+      if (r.error) return toast(r.error.message);
+      toast('Unlocked: ' + r.data); openShelf();
+    };
+    var parts = [h('h3', { text: '🎲 Dice shelf' }),
+      h('div', { style: 'color:var(--ink3);font-size:.9rem', text: 'You own ' + count + ' of ' + sets.length + ' sets. The dice you equip show up when you roll at any game table.' }),
+      grid, h('div', { style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap' }, code, redeem)];
+    var isAdm = (await sb.rpc('is_admin')).data === true;
+    var foot = [closeX()];
+    if (isAdm) foot.unshift(h('button', { class: 'linkbtn', text: 'Gift a set (admin)', onclick: openGift }));
+    parts.push(h('div', { class: 'modal-foot', style: 'display:flex;gap:8px;justify-content:flex-end;margin-top:12px' }, foot));
+    var card = h('div', { class: 'modal-card' }, parts);
+    clear($('modalRoot')).appendChild(h('div', { class: 'o-modal shelf-wide', onclick: function (ev) { if (ev.target.classList.contains('o-modal')) closeModal(); } }, card));
+  }
+  function closeX() { return h('button', { type: 'button', class: 'linkbtn', text: 'Close', onclick: closeModal }); }
+
+  async function openGift() {
+    var sets = await loadSets();
+    var who = h('input', { type: 'text', placeholder: 'Username (for example deb)' });
+    var sel = h('select', {}, sets.map(function (s) { return h('option', { value: s.slug, text: s.name }); }));
+    var go1 = h('button', { class: 'join-btn', text: 'Gift it' });
+    go1.onclick = async function () {
+      var u = who.value.trim().replace(/^@/, '').toLowerCase(); if (!u) return;
+      var pr = await sb.from('profiles').select('id, display_name, username').eq('username', u).maybeSingle();
+      if (!pr.data) return toast('No one with that username');
+      var r = await sb.rpc('admin_gift_dice', { p_user: pr.data.id, p_slug: sel.value });
+      if (r.error) return toast(r.error.message); toast('Gifted to ' + nameOf(pr.data)); closeModal();
+    };
+    clear($('modalRoot')).appendChild(h('div', { class: 'o-modal', onclick: function (ev) { if (ev.target.classList.contains('o-modal')) closeModal(); } },
+      h('div', { class: 'modal-card' }, h('h3', { text: 'Gift a dice set' }), who, sel,
+        h('div', { class: 'modal-foot', style: 'display:flex;gap:8px;justify-content:flex-end;margin-top:12px' }, h('button', { class: 'linkbtn', text: '← Back', onclick: openShelf }), go1))));
+  }
+
+  /* ---- sidebar button ---- */
+  function initBtn() {
+    if (shelfBtn || !me) return;
+    var anchor = $('newOasisSide'); if (!anchor || !anchor.parentNode) return;
+    shelfBtn = h('button', { class: 'btn-outline', style: 'width:100%;margin-bottom:8px', text: '🎲 Dice shelf', onclick: openShelf });
+    anchor.parentNode.insertBefore(shelfBtn, anchor);
+  }
+  setInterval(initBtn, 1000);
+
+  /* ---- show each roller's dice set on the table ---- */
+  var busy = false;
+  async function restyleZone(z) {
+    if (busy) return; busy = true;
+    try {
+      var S = window.TblX && window.TblX.S && window.TblX.S(); if (!S || !S.o) return;
+      var sets = await loadSets();
+      var r = await sb.from('posts').select('id, roll').eq('oasis_id', S.o.id).eq('channel', 'table').not('roll', 'is', null).is('roll_cleared_at', null).order('created_at', { ascending: false }).limit(3);
+      var kids = z.querySelectorAll('.die');
+      (r.data || []).forEach(function (p, i) {
+        var d = p.roll, el = kids[i]; if (!d || !el) return;
+        var set = sets.find(function (s) { return s.slug === d.set; }); if (!set) return;
+        styleDie(el, set, d.sides);
+      });
+    } finally { busy = false; }
+  }
+  setInterval(function () {
+    var z = document.getElementById('diceZone');
+    if (!z || z.__dsObs) return;
+    z.__dsObs = true;
+    var t = null;
+    new MutationObserver(function () { clearTimeout(t); t = setTimeout(function () { restyleZone(z); }, 120); }).observe(z, { childList: true });
+    restyleZone(z);
+  }, 700);
+})();
