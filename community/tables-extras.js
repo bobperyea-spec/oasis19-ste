@@ -320,6 +320,14 @@ X.init = function () {
       if (opts && opts.reload) opts.reload(); else loadFeed(opts);
     });
   }
+  async function delPost(p, opts) {
+    if (!confirm('Delete this post? This cannot be undone.')) return;
+    var r = await sb.from('posts').delete().eq('id', p.id);
+    if (r.error) { toast(r.error.message); return; }
+    if (p.video_url) { var k = p.video_url.split('/object/public/videos/')[1]; if (k) sb.storage.from('videos').remove([k]); }
+    toast('Post deleted.');
+    if (opts && opts.reload) opts.reload(); else loadFeed(opts);
+  }
   window.renderPost = function (p, opts) {
     var card = orig.apply(this, arguments);
     try {
@@ -328,6 +336,8 @@ X.init = function () {
         if (p.user_id === me.id) {
           var bar = card.querySelector('.post-actions');
           if (bar) bar.appendChild(h('button', { class: 'post-action', type: 'button', title: 'Edit your post', text: '✏️ Edit', onclick: function () { editDlg(p, opts); } }));
+          if (bar) bar.appendChild(h('button', { class: 'post-action', type: 'button', title: 'Delete your post', text: '🗑️ Delete', onclick: function () { delPost(p, opts); } }));
+          var oldBtn = card.querySelector('button.post-menu[title="Delete post"]'); if (oldBtn) oldBtn.remove();
         }
       }
     } catch (e) { /* never break the feed */ }
