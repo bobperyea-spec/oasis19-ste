@@ -349,7 +349,7 @@ X.init = function () {
 /* ===== Social: follow, direct messages, block, report, admin tools ===== */
 (function () {
   'use strict';
-  var REPORT_EMAIL = 'Oasisi19admin@proton.me';
+  var REPORT_EMAIL = 'Oasis19admin@proton.me';
   var isAdmin = false, lastTotal = -1, btn = null, badge = null;
 
   function fail(e) { toast((e && e.message) || 'Something went wrong'); }
@@ -615,4 +615,37 @@ X.init = function () {
       return r;
     };
   }
+})();
+
+/* ===== Following feed tab ===== */
+(function () {
+  'use strict';
+  var origLoad = window.loadFeed;
+  if (typeof origLoad !== 'function') return;
+  window.loadFeed = async function (opts) {
+    if (!(opts && opts.mode === 'home' && feedFilter === 'following')) return origLoad.apply(this, arguments);
+    var box = clear(opts.box);
+    box.appendChild(h('div', { class: 'empty', text: 'Loading…' }));
+    var f = await sb.from('follows').select('followee').eq('follower', me.id);
+    var ids = (f.data || []).map(function (r) { return r.followee; });
+    if (!ids.length) { clear(box).appendChild(h('div', { class: 'empty', text: 'Follow people from their profile and their posts will show up here.' })); return; }
+    var r = await sb.from('posts').select(POST_SEL).in('user_id', ids).order('created_at', { ascending: false }).limit(50);
+    clear(box);
+    if (r.error) { box.appendChild(h('div', { class: 'empty', text: r.error.message })); return; }
+    var rows = (r.data || []).filter(function (p) { return !(p.oases && (p.oases.is_private || p.oases.kind === 'table')); });
+    if (!rows.length) { box.appendChild(h('div', { class: 'empty', text: 'No posts from people you follow yet.' })); return; }
+    rows.forEach(function (p) { box.appendChild(renderPost(p, opts)); });
+  };
+  var t = setInterval(function () {
+    var bar = document.getElementById('feedFilter');
+    if (!bar) return;
+    clearInterval(t);
+    var b = h('button', { class: 'filter-btn', 'data-f': 'following', text: 'Following' });
+    b.onclick = function () {
+      feedFilter = 'following';
+      bar.querySelectorAll('.filter-btn').forEach(function (x) { x.classList.toggle('active', x === b); });
+      window.loadFeed({ box: $('feedPosts'), mode: 'home' });
+    };
+    bar.appendChild(b);
+  }, 500);
 })();
