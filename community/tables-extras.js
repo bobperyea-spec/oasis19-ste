@@ -869,7 +869,9 @@ X.init = function () {
   function openShare(title, text, link) {
     var SITE = link || SITE0;
     var enc = encodeURIComponent;
-    var box = h('textarea', { rows: '4', style: 'width:100%;box-sizing:border-box', text: text });
+    var TRUST = 'It\'s free, your information is never sold, there\'s no tracking, and the whole site has just one ad.';
+    if (text.indexOf('never sold') < 0) text = text + ' ' + TRUST;
+    var box = h('textarea', { rows: '6', style: 'width:100%;box-sizing:border-box', text: text });
     function msg() { return box.value.trim(); }
     var items = [];
     if (navigator.share) items.push(row('Share with an app on this device', '📲', function () { navigator.share({ title: title, text: msg(), url: SITE }).catch(function () {}); }));
