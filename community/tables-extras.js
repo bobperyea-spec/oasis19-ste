@@ -448,14 +448,26 @@ X.init = function () {
 
   /* ---------- admin: delete a profile ---------- */
   function adminDelete(uid, p) {
-    var del = h('button', { class: 'join-btn', style: 'background:#c0392b', text: 'Delete permanently' });
-    del.onclick = async function () {
-      var r = await sb.rpc('admin_delete_user', { p: uid });
-      if (r.error) return fail(r.error);
-      toast('Profile deleted'); closeModal(); go('discover');
-    };
-    showModal(h('div', { class: 'modal-card' }, h('h3', { text: 'Delete ' + nameOf(p) + ' permanently?' }),
-      h('p', { text: 'This removes the profile, posts, comments and messages. It can\'t be undone.' }), foot([closeBtn('Cancel'), del])));
+    var nm = nameOf(p);
+    function step3() {
+      var del = h('button', { class: 'join-btn', style: 'background:#c0392b', text: 'Yes, delete ' + nm + ' forever' });
+      del.onclick = async function () {
+        del.disabled = true;
+        var r = await sb.rpc('admin_delete_user', { p: uid });
+        if (r.error) { del.disabled = false; return fail(r.error); }
+        toast('Profile deleted'); closeModal(); go('discover');
+      };
+      showModal(h('div', { class: 'modal-card' }, h('h3', { text: 'Are you really sure?' }),
+        h('p', { text: 'This is the last chance. ' + nm + ' will be gone forever, with every post, comment and message. There is no undo.' }), foot([closeBtn('No, keep it'), del])));
+    }
+    function step2() {
+      var go2 = h('button', { class: 'join-btn', style: 'background:#c0392b', text: 'Yes, I\'m sure', onclick: step3 });
+      showModal(h('div', { class: 'modal-card' }, h('h3', { text: 'Are you sure?' }),
+        h('p', { text: 'You are about to delete ' + nm + (p && p.username ? ' (@' + p.username + ')' : '') + '. Only an admin can do this.' }), foot([closeBtn('Cancel'), go2])));
+    }
+    var first = h('button', { class: 'join-btn', style: 'background:#c0392b', text: 'Delete this profile', onclick: step2 });
+    showModal(h('div', { class: 'modal-card' }, h('h3', { text: 'Delete ' + nm + ' permanently?' }),
+      h('p', { text: 'This removes the profile, posts, comments and messages. It can\'t be undone. You will be asked to confirm twice more.' }), foot([closeBtn('Cancel'), first])));
   }
 
   /* ---------- inbox ---------- */
