@@ -649,3 +649,26 @@ X.init = function () {
     bar.appendChild(b);
   }, 500);
 })();
+
+/* ===== Prominent "Pick up dice" button on the table ===== */
+(function () {
+  'use strict';
+  setInterval(function () {
+    var z = document.getElementById('diceZone');
+    if (!z || !window.TblX || !window.TblX.S) return;
+    var S = window.TblX.S(); if (!S || !S.o) return;
+    var seated = S.role === 'owner' || S.role === 'player';
+    var btn = document.getElementById('pickDiceBtn');
+    var has = z.querySelector('.die');
+    if (!seated || !has) { if (btn) btn.remove(); return; }
+    if (btn) return;
+    btn = h('button', { id: 'pickDiceBtn', type: 'button', class: 'btn-outline', style: 'margin-top:6px;font-size:.8rem;padding:4px 12px;background:#fff', text: '✋ Pick up dice' });
+    btn.onclick = async function () {
+      btn.disabled = true;
+      var r = await sb.rpc('pick_up_dice', { p_oasis: S.o.id });
+      if (r.error) { btn.disabled = false; return toast(r.error.message); }
+      clear(z); btn.remove(); toast('Dice picked up');
+    };
+    z.parentNode.appendChild(btn);
+  }, 700);
+})();
