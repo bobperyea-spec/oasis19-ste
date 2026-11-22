@@ -1175,3 +1175,50 @@ X.init = function () {
   }
   setInterval(place, 800);
 })();
+
+/* ===== Emoji picker for the post box ===== */
+(function () {
+  var SETS = [
+    ['Smileys', '😀 😃 😄 😁 😆 😂 🤣 😊 😇 🙂 😉 😍 🥰 😘 😋 😎 🤩 🥳 😏 😌 😴 🤔 🙄 😬 😢 😭 😡 🤯 😱 🥺 🤗 🤭 🙃 😅 😜 🤪'],
+    ['Hands', '👍 👎 👏 🙌 🙏 💪 👋 ✌️ 🤞 🤝 👌 🤟 ☝️ 👀 🫶'],
+    ['Hearts', '❤️ 🧡 💛 💚 💙 💜 🖤 🤍 💖 💕 💯 ✨ 🔥 🎉 🎊 🌟 ⭐'],
+    ['Nature', '🌴 🌊 ☀️ 🌈 🌸 🌻 🌲 🍀 🌙 ⛅ 🐶 🐱 🐻 🦋 🐝 🦉'],
+    ['Fun', '🎲 🎮 🎸 🎬 📚 ☕ 🍕 🍔 🌮 🍰 🍻 ⚽ 🏀 🏈 🚗 ✈️ 🏠 💡 📷 🎁']
+  ];
+  var pop = null;
+  function close() { if (pop) { pop.remove(); pop = null; } }
+  function insertAt(ta, e) {
+    var s = ta.selectionStart == null ? ta.value.length : ta.selectionStart, en = ta.selectionEnd == null ? s : ta.selectionEnd;
+    ta.value = ta.value.slice(0, s) + e + ta.value.slice(en);
+    ta.selectionStart = ta.selectionEnd = s + e.length; ta.focus();
+    ta.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+  function open(btn, ta) {
+    if (pop) return close();
+    pop = h('div', { role: 'dialog', 'aria-label': 'Emoji picker', style: 'position:absolute;z-index:60;width:min(320px,92vw);max-height:260px;overflow:auto;background:#fff;border:1px solid #ddd;border-radius:12px;padding:8px;box-shadow:0 8px 24px rgba(0,0,0,.18)' });
+    SETS.forEach(function (g) {
+      pop.appendChild(h('div', { style: 'font-size:.7rem;color:#777;margin:6px 4px 2px', text: g[0] }));
+      var row = h('div', { style: 'display:flex;flex-wrap:wrap' });
+      g[1].split(' ').forEach(function (e) {
+        row.appendChild(h('button', { type: 'button', 'aria-label': 'Insert ' + e, text: e, style: 'border:0;background:none;font-size:1.4rem;padding:4px;cursor:pointer;border-radius:6px;line-height:1',
+          onclick: function (ev) { ev.stopPropagation(); insertAt(ta, e); } }));
+      });
+      pop.appendChild(row);
+    });
+    var r = btn.getBoundingClientRect();
+    pop.style.left = Math.max(8, Math.min(r.left + window.scrollX, window.innerWidth - 330)) + 'px';
+    pop.style.top = (r.bottom + window.scrollY + 6) + 'px';
+    document.body.appendChild(pop);
+  }
+  document.addEventListener('click', function (e) { if (pop && !pop.contains(e.target) && !(e.target.classList && e.target.classList.contains('o19-emoji-btn'))) close(); });
+  setInterval(function () {
+    document.querySelectorAll('.compose').forEach(function (cmp) {
+      if (cmp._o19e) return;
+      var ta = cmp.querySelector('textarea'), vb = cmp.querySelector('.vid-btn'); if (!ta || !vb || !vb.parentNode) return;
+      cmp._o19e = true;
+      var b = h('button', { type: 'button', class: 'vid-btn o19-emoji-btn', title: 'Add an emoji', 'aria-label': 'Add an emoji', text: '😊 Emoji' });
+      b.onclick = function (ev) { ev.stopPropagation(); open(b, ta); };
+      vb.parentNode.insertBefore(b, vb.parentNode.firstChild);
+    });
+  }, 800);
+})();
