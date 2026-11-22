@@ -822,3 +822,32 @@ X.init = function () {
     restyleZone(z);
   }, 700);
 })();
+
+/* ===== Image size hints next to upload buttons ===== */
+(function () {
+  'use strict';
+  var HINTS = [
+    { match: /^choose header image$/i, text: 'Best size: 1400 × 460 px (a wide banner, about 3 to 1). Other sizes are cropped from the center.' },
+    { match: /^choose profile picture$/i, text: 'Best size: 400 × 400 px (square). Other sizes are cropped from the center.' },
+    { match: /change photo$/i, text: 'Best size: a square picture, at least 400 × 400 px. Other shapes are cropped from the center.' }
+  ];
+  var TAIL = ' JPG, PNG, WebP or GIF, up to 12 MB.';
+  function scan() {
+    document.querySelectorAll('button').forEach(function (b) {
+      if (b.__hint) return;
+      var t = (b.textContent || '').trim();
+      for (var i = 0; i < HINTS.length; i++) {
+        if (HINTS[i].match.test(t)) {
+          b.__hint = true;
+          var d = h('div', { style: 'font-size:.78rem;color:var(--ink3,#6b6485);margin-top:4px;max-width:340px', text: HINTS[i].text + TAIL });
+          var host = b.parentNode;
+          if (host && host.classList.contains('img-pick')) host.appendChild(d); else b.after(d);
+          break;
+        }
+      }
+    });
+  }
+  var t = null;
+  new MutationObserver(function () { clearTimeout(t); t = setTimeout(scan, 100); }).observe(document.body, { childList: true, subtree: true });
+  scan();
+})();
