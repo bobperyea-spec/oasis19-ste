@@ -1,7 +1,4 @@
 ---
 deployment:
   tasks:
-    - export DEPLOYPATH=/home/oasirble/public_html/community/
-    - /bin/cp -f community/*.js $DEPLOYPATH
-    - /bin/cp -f community/*.css $DEPLOYPATH
-    - /bin/cp -f community/*.html $DEPLOYPATH
+    - /bin/bash deploy.sh
