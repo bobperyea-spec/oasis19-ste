@@ -855,14 +855,14 @@ X.init = function () {
 /* ===== Invite and share buttons ===== */
 (function () {
   'use strict';
-  var SITE = 'https://oasis19.com/community/';
+  var SITE0 = 'https://oasis19.com/community/';
   var SHARE_SVG = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 10.5l6.8-4M8.6 13.5l6.8 4"/></svg>';
 
   function row(label, icon, onclick) {
     return h('button', { type: 'button', class: 'btn-outline', style: 'display:flex;gap:10px;align-items:center;width:100%;margin:6px 0;text-align:left', onclick: onclick }, h('span', { text: icon }), label);
   }
-  function openShare(title, text) {
-    var full = text + ' ' + SITE;
+  function openShare(title, text, link) {
+    var SITE = link || SITE0;
     var enc = encodeURIComponent;
     var box = h('textarea', { rows: '4', style: 'width:100%;box-sizing:border-box', text: text });
     function msg() { return box.value.trim(); }
@@ -887,6 +887,7 @@ X.init = function () {
     openShare('Invite friends to Oasis19', 'Come hang out with me on Oasis19, a friendly community with game tables, clubs and conversations for every interest.');
   }
   async function shareTable(o) {
+    var SITE = SITE0;
     var text = 'Join my game table "' + o.name + '" on Oasis19!';
     if (o.is_private) {
       var r = await sb.rpc('get_oasis_invite', { oid: o.id });
@@ -895,7 +896,7 @@ X.init = function () {
     } else {
       text += ' Find it in The Castle and take an open seat.';
     }
-    openShare('Invite players to ' + o.name, text);
+    openShare('Invite players to ' + o.name, text, SITE0 + '?t=' + o.id);
   }
 
   setInterval(function () {
@@ -915,4 +916,33 @@ X.init = function () {
       acts.insertBefore(t, acts.firstChild);
     }
   }, 800);
+
+  // share button on regular oasis pages
+  setInterval(function () {
+    var oa = document.querySelector('#screen-oasis .oasis-actions');
+    if (!oa || typeof currentOasis === 'undefined' || !currentOasis || document.getElementById('shareOasisBtn')) return;
+    var ob = h('button', { id: 'shareOasisBtn', type: 'button', class: 'btn-outline', title: 'Share this oasis', 'aria-label': 'Share this oasis', style: 'display:inline-flex;align-items:center;gap:6px', onclick: async function () {
+      var r = await sb.from('oases').select('id, name, is_private').eq('id', currentOasis).maybeSingle();
+      var o = r.data; if (!o) return;
+      var text = 'Come join "' + o.name + '" on Oasis19!';
+      if (o.is_private) { var c = await sb.rpc('get_oasis_invite', { oid: o.id }); text += c.data ? ' It is private, so use this invite code after you sign in: ' + c.data + '.' : ' It is private, so ask me for the invite code.'; }
+      openShare('Invite people to ' + o.name, text, SITE0 + '?t=' + o.id);
+    } });
+    var ic3 = h('span', { style: 'display:inline-flex' }); ic3.innerHTML = SHARE_SVG; ob.append(ic3, 'Share');
+    oa.insertBefore(ob, oa.firstChild);
+  }, 800);
+
+  // open a shared link (?t=ID) once the member is signed in
+  try {
+    var mm = /[?&]t=(\d+)/.exec(location.search);
+    if (mm) { sessionStorage.setItem('o19_open', mm[1]); history.replaceState(null, '', location.pathname); }
+  } catch (e) {}
+  var deep = setInterval(function () {
+    var id = null; try { id = sessionStorage.getItem('o19_open'); } catch (e) {}
+    if (!id) { clearInterval(deep); return; }
+    if (typeof me === 'undefined' || !me) return;
+    clearInterval(deep);
+    try { sessionStorage.removeItem('o19_open'); } catch (e) {}
+    setTimeout(function () { go('oasis', Number(id)); }, 1500);
+  }, 500);
 })();
