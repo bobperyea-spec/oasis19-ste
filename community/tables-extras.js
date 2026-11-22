@@ -1026,3 +1026,99 @@ X.init = function () {
   }
   setInterval(build, 1000);
 })();
+
+/* ===== Photos on posts, and phone share-sheet intake ===== */
+(function () {
+  var MAXPX = 1600, MAXMB = 10, CUR = null;
+  function resize(file) {
+    return new Promise(function (res, rej) {
+      var url = URL.createObjectURL(file), img = new Image();
+      img.onload = function () {
+        var s = Math.min(1, MAXPX / Math.max(img.width, img.height)), c = document.createElement('canvas');
+        c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+        c.toBlob(function (b) { b ? res(b) : rej(new Error('Could not process that photo.')); }, 'image/jpeg', 0.85);
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); rej(new Error('Could not read that photo.')); };
+      img.src = url;
+    });
+  }
+  function setPhoto(cmp, file) {
+    if (!file) return;
+    if (!/^image\//.test(file.type)) { toast('Please choose a photo.'); return; }
+    if (file.size > MAXMB * 1048576) { toast('That photo is over ' + MAXMB + ' MB. Please pick a smaller one.'); return; }
+    cmp._img = file; cmp._imgUrl = null;
+    var info = cmp.querySelector('.o19-photo-info'); if (!info) return;
+    clear(info);
+    var th = h('img', { src: URL.createObjectURL(file), alt: 'Photo to post', style: 'height:44px;border-radius:6px;vertical-align:middle;margin-right:6px' });
+    info.append(th, h('button', { type: 'button', class: 'linkbtn danger', text: 'remove', onclick: function () { cmp._img = null; cmp._imgUrl = null; clear(info); } }));
+  }
+  function decorate() {
+    document.querySelectorAll('.compose').forEach(function (cmp) {
+      if (cmp._o19p) return;
+      var vb = cmp.querySelector('.vid-btn'); if (!vb || !vb.parentNode) return;
+      cmp._o19p = true;
+      var inp = h('input', { type: 'file', accept: 'image/jpeg,image/png,image/webp,image/gif', class: 'hidden' });
+      inp.onchange = function () { setPhoto(cmp, inp.files[0]); inp.value = ''; };
+      var b = h('button', { type: 'button', class: 'vid-btn', title: 'Add a photo (up to ' + MAXMB + ' MB; resized to ' + MAXPX + ' px)', text: '🖼️ Photo', onclick: function () { inp.click(); } });
+      var info = h('span', { class: 'vid-info o19-photo-info' });
+      vb.parentNode.insertBefore(b, vb); vb.parentNode.insertBefore(inp, vb); vb.parentNode.insertBefore(info, vb.nextSibling);
+      cmp._setPhoto = function (f) { setPhoto(cmp, f); };
+    });
+  }
+  // On Post: upload the photo first, then let the normal handler run
+  document.addEventListener('click', async function (ev) {
+    var btn = ev.target.closest && ev.target.closest('.compose .btn-primary'); if (!btn) return;
+    var cmp = btn.closest('.compose'); if (!cmp || !cmp._img) return;
+    if (cmp._imgUrl) { CUR = cmp; return; }
+    ev.stopImmediatePropagation(); ev.preventDefault();
+    var ta = cmp.querySelector('textarea'); if (ta && !ta.value.trim()) ta.value = 'Shared a photo';
+    var old = btn.textContent; btn.disabled = true; btn.textContent = 'Uploading…';
+    try {
+      var blob = await resize(cmp._img);
+      var path = me.id + '/p-' + (crypto.randomUUID ? crypto.randomUUID() : Date.now()) + '.jpg';
+      var up = await sb.storage.from('table-files').upload(path, blob, { contentType: 'image/jpeg', upsert: false });
+      if (up.error) throw up.error;
+      cmp._imgUrl = sb.storage.from('table-files').getPublicUrl(path).data.publicUrl;
+      btn.disabled = false; btn.textContent = old; btn.click();
+    } catch (e) { toast(e.message || 'Could not upload that photo.'); btn.disabled = false; btn.textContent = old; }
+  }, true);
+  // Attach the photo to the post row
+  var of = sb.from.bind(sb);
+  sb.from = function (t) {
+    var q = of(t);
+    if (t === 'posts' && q && q.insert) {
+      var oi = q.insert.bind(q);
+      q.insert = function (row) {
+        if (CUR && CUR._imgUrl && row && !Array.isArray(row) && !row.file_url) {
+          row = Object.assign({}, row, { file_url: CUR._imgUrl, file_name: 'photo.jpg' });
+          var c = CUR; CUR = null; c._img = null; c._imgUrl = null; var i = c.querySelector('.o19-photo-info'); if (i) clear(i);
+        }
+        return oi(row);
+      };
+    }
+    return q;
+  };
+  setInterval(decorate, 800);
+
+  // Photos or text shared to Oasis19 from the phone's share sheet (Android installed app)
+  if (/[?&]shared=1/.test(location.search)) {
+    var tries = 0, iv = setInterval(async function () {
+      if (++tries > 240) return clearInterval(iv);
+      var host = $('composeHome'); var cmp = host && host.querySelector('.compose');
+      if (!me || !cmp || !cmp._setPhoto) return;
+      clearInterval(iv);
+      try {
+        var c = await caches.open('oasis19-share'), meta = await c.match('/community/shared-meta');
+        var m = meta ? await meta.json() : {}, ta = cmp.querySelector('textarea');
+        if (ta) ta.value = [m.title, m.text, m.url].filter(Boolean).join('\n');
+        var fr = await c.match('/community/shared-file');
+        if (fr) { var b = await fr.blob(); cmp._setPhoto(new File([b], m.name || 'shared.jpg', { type: b.type || 'image/jpeg' })); }
+        await c.delete('/community/shared-file'); await c.delete('/community/shared-meta');
+        if (ta) ta.focus();
+        toast('Shared to Oasis19. Add a caption and press Post.');
+      } catch (e) {}
+      history.replaceState(null, '', '/community/');
+    }, 500);
+  }
+})();

@@ -1,0 +1,27 @@
+{
+"name": "Oasis19",
+"short_name": "Oasis19",
+"description": "A friendly place for family and friends to share updates and catch up on local news.",
+"start_url": "/community/",
+"scope": "/community/",
+"display": "standalone",
+"orientation": "portrait",
+"background_color": "#f4f1ea",
+"theme_color": "#0f7b6c",
+"icons": [
+{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+{ "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+{ "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+],
+"share_target": {
+"action": "/community/share-target",
+"method": "POST",
+"enctype": "multipart/form-data",
+"params": {
+"title": "title",
+"text": "text",
+"url": "url",
+"files": [ { "name": "media", "accept": ["image/*"] } ]
+}
+}
+}
