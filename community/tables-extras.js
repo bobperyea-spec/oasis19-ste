@@ -345,3 +345,274 @@ X.init = function () {
   };
 })();
 })();
+
+/* ===== Social: follow, direct messages, block, report, admin tools ===== */
+(function () {
+  'use strict';
+  var REPORT_EMAIL = 'Oasisi19admin@proton.me';
+  var isAdmin = false, lastTotal = -1, btn = null, badge = null;
+
+  function fail(e) { toast((e && e.message) || 'Something went wrong'); }
+  function showModal(card) {
+    clear($('modalRoot')).appendChild(h('div', { class: 'o-modal', onclick: function (e) { if (e.target.classList.contains('o-modal')) closeModal(); } }, card));
+  }
+  function foot(btns) { return h('div', { class: 'modal-foot', style: 'display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:12px' }, btns); }
+  function closeBtn(t) { return h('button', { type: 'button', class: 'linkbtn', text: t || 'Close', onclick: closeModal }); }
+  function stillOpen(node) { return document.body.contains(node); }
+  async function getProfiles(ids) {
+    var map = {};
+    if (!ids.length) return map;
+    var r = await sb.from('profiles').select('id, username, display_name, avatar_url').in('id', ids);
+    (r.data || []).forEach(function (p) { map[p.id] = p; });
+    return map;
+  }
+  function who(map, id) { return map[id] || { id: id, username: 'member', display_name: 'Member' }; }
+
+  /* ---------- profile bar: Follow, Message, Block ---------- */
+  async function addBar() {
+    var scr = $('screen-profile'); if (!scr) return;
+    var old = $('socialBar'); if (old) old.remove();
+    var uid = viewUserId;
+    if (!uid || !me || uid === me.id) return;
+    var bar = h('div', { id: 'socialBar', style: 'display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0' });
+    scr.insertBefore(bar, scr.firstChild);
+    var pm = await getProfiles([uid]); var p = who(pm, uid);
+    var fr = await sb.from('follows').select('follower').eq('follower', me.id).eq('followee', uid).limit(1);
+    var following = !!(fr.data && fr.data.length);
+    var cnt = await sb.from('follows').select('follower', { count: 'exact', head: true }).eq('followee', uid);
+    var count = cnt.count || 0;
+    if (!stillOpen(bar)) return;
+    var fb = h('button', { class: following ? 'btn-outline' : 'join-btn', text: following ? 'Following' : 'Follow' });
+    var cl = h('span', { style: 'color:var(--ink3);font-size:.85rem', text: count + (count === 1 ? ' follower' : ' followers') });
+    fb.onclick = async function () {
+      fb.disabled = true;
+      var res = following
+        ? await sb.from('follows').delete().eq('follower', me.id).eq('followee', uid)
+        : await sb.from('follows').insert({ follower: me.id, followee: uid });
+      if (res.error) { fb.disabled = false; return fail(res.error); }
+      addBar();
+    };
+    var mb = h('button', { class: 'btn-outline', text: '💬 Message', onclick: function () { openCompose(uid, p); } });
+    var more = h('button', { class: 'linkbtn', text: 'Block', onclick: function () { blockFlow(uid, p); } });
+    bar.append(fb, mb, cl, more);
+    if (isAdmin) bar.appendChild(h('button', { class: 'linkbtn', style: 'color:#c0392b', text: 'Delete profile permanently', onclick: function () { adminDelete(uid, p); } }));
+  }
+
+  /* ---------- compose a first message ---------- */
+  function openCompose(uid, p) {
+    var ta = h('textarea', { rows: '4', maxlength: '2000', placeholder: 'Write your message…', style: 'width:100%;box-sizing:border-box' });
+    var send = h('button', { class: 'join-btn', text: 'Send' });
+    var info = h('div', { style: 'color:var(--ink3);font-size:.85rem;margin-bottom:8px', text: isAdmin ? 'You can message anyone as an admin.' : nameOf(p) + ' will get a request and can accept or decline it. You can send one message until they accept.' });
+    send.onclick = async function () {
+      var body = ta.value.trim(); if (!body) return;
+      send.disabled = true;
+      var r = await sb.rpc('send_dm', { p_to: uid, p_body: body });
+      if (r.error) { send.disabled = false; return fail(r.error); }
+      toast(isAdmin ? 'Message sent' : 'Request sent');
+      closeModal(); poll();
+    };
+    showModal(h('div', { class: 'modal-card' }, h('h3', { text: 'Message ' + nameOf(p) }), info, ta, foot([closeBtn('Cancel'), send])));
+    ta.focus();
+  }
+
+  /* ---------- block, then offer to report ---------- */
+  function blockFlow(uid, p) {
+    var go1 = h('button', { class: 'join-btn', text: 'Block' });
+    go1.onclick = async function () {
+      var r = await sb.rpc('block_user', { p: uid });
+      if (r.error) return fail(r.error);
+      await sb.from('follows').delete().eq('follower', me.id).eq('followee', uid);
+      reportPrompt(uid, p);
+      poll(); addBar();
+    };
+    showModal(h('div', { class: 'modal-card' }, h('h3', { text: 'Block ' + nameOf(p) + '?' }),
+      h('p', { text: 'They won\'t be able to message or follow you. You can unblock anyone later from your Messages.' }), foot([closeBtn('Cancel'), go1])));
+  }
+  function reportPrompt(uid, p) {
+    var ta = h('textarea', { rows: '3', maxlength: '800', placeholder: 'What happened? (optional)', style: 'width:100%;box-sizing:border-box' });
+    var rep = h('button', { class: 'join-btn', text: 'Report profile' });
+    rep.onclick = async function () {
+      var reason = ta.value.trim();
+      await sb.rpc('report_user', { p: uid, p_reason: reason });
+      var subj = 'Oasis19 report: @' + (p.username || uid);
+      var body = 'I\'d like to report this profile on Oasis19.\n\nProfile: ' + nameOf(p) + ' (@' + (p.username || '') + ')\nProfile ID: ' + uid + '\nReason: ' + reason + '\n';
+      var a = document.createElement('a');
+      a.href = 'mailto:' + REPORT_EMAIL + '?subject=' + encodeURIComponent(subj) + '&body=' + encodeURIComponent(body);
+      document.body.appendChild(a); a.click(); a.remove();
+      toast('Report saved. Your email app will open so you can send it.');
+      closeModal();
+    };
+    showModal(h('div', { class: 'modal-card' }, h('h3', { text: 'Blocked. Report this profile?' }),
+      h('p', { text: 'Reports go to the Oasis19 admin. You can add a note below.' }), ta, foot([closeBtn('No thanks'), rep])));
+  }
+
+  /* ---------- admin: delete a profile ---------- */
+  function adminDelete(uid, p) {
+    var del = h('button', { class: 'join-btn', style: 'background:#c0392b', text: 'Delete permanently' });
+    del.onclick = async function () {
+      var r = await sb.rpc('admin_delete_user', { p: uid });
+      if (r.error) return fail(r.error);
+      toast('Profile deleted'); closeModal(); go('discover');
+    };
+    showModal(h('div', { class: 'modal-card' }, h('h3', { text: 'Delete ' + nameOf(p) + ' permanently?' }),
+      h('p', { text: 'This removes the profile, posts, comments and messages. It can\'t be undone.' }), foot([closeBtn('Cancel'), del])));
+  }
+
+  /* ---------- inbox ---------- */
+  async function openInbox() {
+    var list = h('div', { style: 'display:flex;flex-direction:column;gap:6px;max-height:55vh;overflow:auto' });
+    var card = h('div', { class: 'modal-card' }, h('h3', { text: 'Messages' }), list,
+      foot([h('button', { class: 'linkbtn', text: 'Blocked people', onclick: openBlocked }),
+        isAdmin ? h('button', { class: 'linkbtn', text: 'Reports', onclick: openReports }) : null, closeBtn()]));
+    showModal(card);
+    list.appendChild(h('div', { class: 'empty', text: 'Loading…' }));
+    var tr = await sb.from('dm_threads').select('*').order('last_at', { ascending: false }).limit(60);
+    if (tr.error) { clear(list).appendChild(h('div', { class: 'empty', text: tr.error.message })); return; }
+    var threads = tr.data || [];
+    var ids = threads.map(function (t) { return t.id; });
+    var others = threads.map(function (t) { return t.user_a === me.id ? t.user_b : t.user_a; });
+    var pm = await getProfiles(others);
+    var last = {}, unread = {};
+    if (ids.length) {
+      var mr = await sb.from('dm_messages').select('thread_id, body, sender, created_at, read_at').in('thread_id', ids).order('created_at', { ascending: false }).limit(300);
+      (mr.data || []).forEach(function (m) {
+        if (!last[m.thread_id]) last[m.thread_id] = m;
+        if (m.sender !== me.id && !m.read_at) unread[m.thread_id] = (unread[m.thread_id] || 0) + 1;
+      });
+    }
+    clear(list);
+    function section(title, arr) {
+      if (!arr.length) return;
+      list.appendChild(h('div', { style: 'font-weight:700;font-size:.8rem;color:var(--ink3);margin-top:6px', text: title }));
+      arr.forEach(function (t) {
+        var oid = t.user_a === me.id ? t.user_b : t.user_a, p = who(pm, oid), lm = last[t.id], n = unread[t.id] || 0;
+        list.appendChild(h('div', { style: 'display:flex;gap:10px;align-items:center;cursor:pointer;padding:6px;border-radius:10px', onclick: function () { openThread(t, p); } },
+          personAvatar(p, 'av-sm'),
+          h('div', { style: 'flex:1;min-width:0' },
+            h('div', { style: 'font-weight:' + (n ? '700' : '600'), text: nameOf(p) }),
+            h('div', { style: 'color:var(--ink3);font-size:.82rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis', text: lm ? (lm.sender === me.id ? 'You: ' : '') + lm.body : '' })),
+          n ? h('span', { class: 'oc-unread', text: String(n) }) : null));
+      });
+    }
+    var vis = threads.filter(function (t) { return t.status !== 'declined'; });
+    section('Message requests', vis.filter(function (t) { return t.status === 'pending' && t.requester !== me.id; }));
+    section('Conversations', vis.filter(function (t) { return t.status === 'accepted'; }));
+    section('Waiting for a reply', vis.filter(function (t) { return t.status === 'pending' && t.requester === me.id; }));
+    if (!vis.length) list.appendChild(h('div', { class: 'empty', text: 'No messages yet. Open someone\'s profile and tap Message.' }));
+  }
+
+  /* ---------- one conversation ---------- */
+  async function openThread(t, p) {
+    var box = h('div', { style: 'display:flex;flex-direction:column;gap:6px;max-height:42vh;overflow:auto;padding:4px' });
+    var top = h('div', { style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap' },
+      h('button', { class: 'linkbtn', text: '← Back', onclick: openInbox }),
+      h('h3', { style: 'margin:0;flex:1', text: nameOf(p) }),
+      h('button', { class: 'linkbtn', text: 'Delete conversation', onclick: async function () {
+        if (!confirm('Delete this conversation from your side?')) return;
+        var r = await sb.rpc('delete_dm_thread', { p_thread: t.id }); if (r.error) return fail(r.error); poll(); openInbox(); } }),
+      h('button', { class: 'linkbtn', text: 'Block', onclick: function () { blockFlow(p.id, p); } }));
+    var actions = h('div', { style: 'margin-top:8px' });
+    var card = h('div', { class: 'modal-card' }, top, box, actions);
+    showModal(card);
+    var status = t.status;
+    async function load() {
+      var r = await sb.from('dm_messages').select('id, sender, body, created_at').eq('thread_id', t.id).order('created_at', { ascending: true }).limit(200);
+      if (r.error) return;
+      var atEnd = box.scrollTop + box.clientHeight >= box.scrollHeight - 40;
+      clear(box);
+      (r.data || []).forEach(function (m) {
+        var mine = m.sender === me.id;
+        box.appendChild(h('div', { style: 'align-self:' + (mine ? 'flex-end' : 'flex-start') + ';max-width:80%;background:' + (mine ? 'var(--purple-tint)' : 'var(--bg2, #f1f1f1)') + ';padding:8px 10px;border-radius:12px' },
+          h('div', { style: 'white-space:pre-wrap;word-break:break-word', text: m.body }),
+          h('div', { style: 'font-size:.72rem;color:var(--ink3);margin-top:2px' }, ago(m.created_at) + ' ',
+            h('a', { href: '#', text: 'delete', onclick: async function (e) { e.preventDefault(); var d = await sb.rpc('delete_dm_message', { p_id: m.id }); if (d.error) return fail(d.error); load(); } }))));
+      });
+      if (atEnd || true) box.scrollTop = box.scrollHeight;
+      if (status === 'accepted') { await sb.rpc('mark_thread_read', { p_thread: t.id }); poll(); }
+    }
+    function drawActions() {
+      clear(actions);
+      if (status === 'pending' && t.requester !== me.id) {
+        actions.append(h('div', { style: 'color:var(--ink3);font-size:.85rem;margin-bottom:6px', text: nameOf(p) + ' wants to message you. Nothing is marked read until you accept.' }),
+          foot([
+            h('button', { class: 'btn-outline', text: 'Decline', onclick: async function () { var r = await sb.rpc('respond_dm', { p_thread: t.id, p_accept: false }); if (r.error) return fail(r.error); poll(); openInbox(); } }),
+            h('button', { class: 'join-btn', text: 'Accept', onclick: async function () { var r = await sb.rpc('respond_dm', { p_thread: t.id, p_accept: true }); if (r.error) return fail(r.error); status = 'accepted'; drawActions(); load(); } })]));
+      } else if (status === 'pending' && !isAdmin) {
+        actions.appendChild(h('div', { style: 'color:var(--ink3);font-size:.85rem', text: 'Waiting for ' + nameOf(p) + ' to accept your request.' }));
+      } else {
+        var ta = h('textarea', { rows: '2', maxlength: '2000', placeholder: 'Write a message…', style: 'width:100%;box-sizing:border-box' });
+        var s = h('button', { class: 'join-btn', text: 'Send' });
+        s.onclick = async function () {
+          var body = ta.value.trim(); if (!body) return; s.disabled = true;
+          var r = await sb.rpc('send_dm', { p_to: p.id, p_body: body }); s.disabled = false;
+          if (r.error) return fail(r.error); ta.value = ''; status = 'accepted'; load();
+        };
+        actions.append(ta, foot([s]));
+      }
+    }
+    drawActions(); await load();
+    var timer = setInterval(function () { if (!stillOpen(box)) { clearInterval(timer); return; } load(); }, 8000);
+  }
+
+  /* ---------- blocked list and admin reports ---------- */
+  async function openBlocked() {
+    var list = h('div', { style: 'display:flex;flex-direction:column;gap:8px;max-height:50vh;overflow:auto' });
+    showModal(h('div', { class: 'modal-card' }, h('h3', { text: 'Blocked people' }), list, foot([h('button', { class: 'linkbtn', text: '← Back', onclick: openInbox }), closeBtn()])));
+    var r = await sb.from('blocks').select('blocked').eq('blocker', me.id);
+    var ids = (r.data || []).map(function (x) { return x.blocked; });
+    var pm = await getProfiles(ids);
+    if (!ids.length) { list.appendChild(h('div', { class: 'empty', text: 'You haven\'t blocked anyone.' })); return; }
+    ids.forEach(function (id) {
+      var p = who(pm, id);
+      list.appendChild(h('div', { style: 'display:flex;gap:10px;align-items:center' }, personAvatar(p, 'av-sm'),
+        h('div', { style: 'flex:1', text: nameOf(p) }),
+        h('button', { class: 'btn-outline', text: 'Unblock', onclick: async function (e) { var u = await sb.rpc('unblock_user', { p: id }); if (u.error) return fail(u.error); e.target.parentNode.remove(); } })));
+    });
+  }
+  async function openReports() {
+    var list = h('div', { style: 'display:flex;flex-direction:column;gap:8px;max-height:50vh;overflow:auto' });
+    showModal(h('div', { class: 'modal-card' }, h('h3', { text: 'Reports' }), list, foot([h('button', { class: 'linkbtn', text: '← Back', onclick: openInbox }), closeBtn()])));
+    var r = await sb.from('reports').select('*').order('created_at', { ascending: false }).limit(50);
+    var rows = r.data || [];
+    var pm = await getProfiles(rows.map(function (x) { return x.reported; }).filter(Boolean));
+    if (!rows.length) { list.appendChild(h('div', { class: 'empty', text: 'No reports.' })); return; }
+    rows.forEach(function (x) {
+      var p = who(pm, x.reported);
+      list.appendChild(h('div', { style: 'padding:8px;border:1px solid var(--line, #ddd);border-radius:10px;cursor:pointer', onclick: function () { closeModal(); go('profile', x.reported); } },
+        h('div', { style: 'font-weight:600', text: nameOf(p) + ' (@' + p.username + ')' }),
+        h('div', { style: 'font-size:.85rem', text: x.reason || 'No note' }),
+        h('div', { style: 'font-size:.75rem;color:var(--ink3)', text: ago(x.created_at) })));
+    });
+  }
+
+  /* ---------- sidebar button, unread badge, polling ---------- */
+  async function poll() {
+    if (!me || !btn) return;
+    var r = await sb.rpc('dm_unread');
+    if (r.error || !r.data) return;
+    var row = Array.isArray(r.data) ? r.data[0] : r.data; if (!row) return;
+    var total = Number(row.unread || 0) + Number(row.requests || 0);
+    badge.textContent = total ? String(total) : ''; badge.style.display = total ? 'inline-block' : 'none';
+    if (lastTotal >= 0 && total > lastTotal) toast('💬 You have a new message');
+    lastTotal = total;
+  }
+  function init() {
+    if (btn || !me || !$('newOasisSide') || !$('newOasisSide').parentNode) return;
+    badge = h('span', { class: 'oc-unread', style: 'display:none;margin-left:8px' });
+    btn = h('button', { class: 'btn-outline', style: 'width:100%;margin-bottom:8px', onclick: openInbox }, '💬 Messages', badge);
+    $('newOasisSide').parentNode.insertBefore(btn, $('newOasisSide'));
+    sb.rpc('is_admin').then(function (r) { isAdmin = r.data === true; });
+    poll(); setInterval(poll, 30000);
+  }
+  setInterval(init, 1000);
+
+  /* wrap profile rendering to add the Follow / Message bar */
+  if (typeof window.renderProfile === 'function') {
+    var orig = window.renderProfile;
+    window.renderProfile = function () {
+      var r = orig.apply(this, arguments);
+      Promise.resolve(r).then(function () { return addBar(); }).catch(function () {});
+      return r;
+    };
+  }
+})();
