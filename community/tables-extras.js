@@ -1020,7 +1020,7 @@ X.init = function () {
         menu.style.display = open ? 'block' : 'none';
         btn.setAttribute('aria-expanded', open ? 'true' : 'false');
       } });
-    wrap = h('div', { id: 'legalWrap', style: 'margin-top:auto;position:sticky;bottom:0;padding:10px 4px 6px' }, menu, btn);
+    wrap = h('div', { id: 'legalWrap', style: 'margin-top:auto;position:sticky;bottom:0;padding:10px 4px 6px;background:#fff;border-top:1px solid #eee;z-index:5' }, menu, btn);
     side.appendChild(wrap);
     document.addEventListener('click', function () { menu.style.display = 'none'; btn.setAttribute('aria-expanded', 'false'); });
   }
