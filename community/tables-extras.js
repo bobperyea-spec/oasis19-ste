@@ -293,4 +293,45 @@ X.init = function () {
   load();
   return root;
 };
+// ---------------- Edit your own posts ----------------
+(function () {
+  if (typeof window.renderPost !== 'function' || window.__o19EditPatched) return;
+  window.__o19EditPatched = true;
+  var orig = window.renderPost;
+  var cards = {}, queue = [], timer = null;
+  function flush() {
+    timer = null;
+    var ids = queue.splice(0, queue.length);
+    if (!ids.length) return;
+    sb.from('posts').select('id, edited_at').in('id', ids).not('edited_at', 'is', null).then(function (r) {
+      (r.data || []).forEach(function (row) {
+        var c = cards[row.id]; if (!c || c.querySelector('.post-edited')) return;
+        var t = c.querySelector('.post-time'); if (t) t.parentNode.appendChild(h('span', { class: 'post-edited', style: 'opacity:.65;font-size:12px', text: 'edited' }));
+      });
+    });
+  }
+  function editDlg(p, opts) {
+    ask('Edit your post', [{ label: 'Post text', value: p.body, big: true, max: 3500 }], 'Save', async function (v) {
+      var b = v[0].trim(); if (!b) return false;
+      if (b === (p.body || '').trim()) { closeModal(); return true; }
+      var r = await sb.rpc('edit_post', { p_id: p.id, p_body: b });
+      if (r.error) { toast(r.error.message); return false; }
+      closeModal(); toast('Post updated.');
+      if (opts && opts.reload) opts.reload(); else loadFeed(opts);
+    });
+  }
+  window.renderPost = function (p, opts) {
+    var card = orig.apply(this, arguments);
+    try {
+      if (card && p && p.id) {
+        cards[p.id] = card; queue.push(p.id); if (!timer) timer = setTimeout(flush, 200);
+        if (p.user_id === me.id) {
+          var bar = card.querySelector('.post-actions');
+          if (bar) bar.appendChild(h('button', { class: 'post-action', type: 'button', title: 'Edit your post', text: '✏️ Edit', onclick: function () { editDlg(p, opts); } }));
+        }
+      }
+    } catch (e) { /* never break the feed */ }
+    return card;
+  };
+})();
 })();
