@@ -1122,3 +1122,42 @@ X.init = function () {
     }, 500);
   }
 })();
+
+/* ===== Get the app: install button under the profile photo ===== */
+(function () {
+  var deferred = null;
+  window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); deferred = e; });
+  window.addEventListener('appinstalled', function () { var b = $('getAppBtn'); if (b) b.remove(); });
+  function isInstalled() {
+    return (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+  }
+  function help() {
+    var ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    var steps = ios
+      ? ['Open Oasis19 in Safari (not inside another app).', 'Tap the Share button (the square with an arrow).', 'Scroll down and tap "Add to Home Screen".', 'Tap Add. The Oasis19 icon appears on your home screen.']
+      : ['Open Oasis19 in Chrome.', 'Tap the three dots menu in the top right.', 'Tap "Install app" (or "Add to Home screen").', 'Tap Install. The Oasis19 icon appears with your other apps.'];
+    clear($('modalRoot')).appendChild(h('div', { class: 'o-modal', onclick: function (ev) { if (ev.target.classList.contains('o-modal')) closeModal(); } },
+      h('div', { class: 'modal-card' }, h('h3', { text: 'Get the Oasis19 app' }),
+        h('p', { class: 'hint', text: 'Oasis19 installs straight from the website. There is no app store and nothing to download.' }),
+        h('ol', { style: 'padding-left:20px;line-height:1.7' }, steps.map(function (s) { return h('li', { text: s }); })),
+        h('div', { class: 'modal-foot', style: 'display:flex;justify-content:flex-end;margin-top:12px' }, h('button', { class: 'btn-primary', text: 'Got it', onclick: closeModal })))));
+  }
+  async function install() {
+    if (deferred) {
+      try { deferred.prompt(); var r = await deferred.userChoice; deferred = null; if (r && r.outcome === 'accepted') { var b = $('getAppBtn'); if (b) b.remove(); } } catch (e) { help(); }
+    } else help();
+  }
+  function place() {
+    var head = $('profileHead'), btn = $('getAppBtn');
+    var mine = false; try { mine = !!(me && head && head.children.length && viewUserId === me.id); } catch (e) {}
+    if (!mine || isInstalled()) { if (btn) btn.remove(); return; }
+    if (btn && head.contains(btn)) return;
+    if (btn) btn.remove();
+    btn = h('button', { id: 'getAppBtn', class: 'btn-primary', type: 'button', text: '📲 Get the app', onclick: install, style: 'display:block;margin:10px 16px' });
+    var av = head.querySelector('[class*="avatar"]');
+    var anchor = av;
+    while (anchor && anchor.parentNode && anchor.parentNode !== head) anchor = anchor.parentNode;
+    if (anchor && anchor.parentNode === head) head.insertBefore(btn, anchor.nextSibling); else head.insertBefore(btn, head.firstChild);
+  }
+  setInterval(place, 800);
+})();
