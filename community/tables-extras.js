@@ -672,3 +672,15 @@ X.init = function () {
     z.parentNode.appendChild(btn);
   }, 700);
 })();
+
+/* ===== Colorful dice ===== */
+(function () {
+  'use strict';
+  var C = { 4: ['#ff8fc7', '#e0409a'], 6: ['#ffd95e', '#f2a516'], 8: ['#6fe0ff', '#1b9ad6'], 10: ['#c9a6ff', '#7c4ddb'], 12: ['#ffb066', '#ec6a14'], 20: ['#5eeaa0', '#12a05c'], 100: ['#ff8a8a', '#d6342f'] };
+  var css = '';
+  Object.keys(C).forEach(function (s) {
+    css += '.die.d' + s + '{background:linear-gradient(145deg,' + C[s][0] + ',' + C[s][1] + ')!important;color:#fff!important;text-shadow:0 1px 2px rgba(0,0,0,.45);box-shadow:0 3px 8px rgba(0,0,0,.45),inset 0 1px 2px rgba(255,255,255,.5)!important}';
+  });
+  css += '.die .die-n{font-size:1rem;font-weight:800}.die .die-s{opacity:.85}';
+  var st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
+})();
