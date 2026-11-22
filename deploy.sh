@@ -12,4 +12,18 @@ for f in index.html about.html app.html community/index.html; do
     sed -i 's#images/logo\.png#images/logo-v2.png#g' "$p"
   fi
 done
+
+# SEO 2026-11-22: robots.txt (backed up once), then add share image, Twitter tags and schema to the two landing pages (backed up once, idempotent)
+if [ -f site/robots.txt ]; then
+  [ -e "$D/robots.txt.bak-2026-11-22" ] || cp "$D/robots.txt" "$D/robots.txt.bak-2026-11-22" 2>/dev/null
+  cp -f site/robots.txt "$D/robots.txt"
+fi
+for f in index.html about.html; do
+  p="$D/$f"
+  if [ -f "$p" ] && ! grep -q 'seo-extra-2026-11-22' "$p"; then
+    [ -e "$p.bak-2026-11-22-pre-seo" ] || cp "$p" "$p.bak-2026-11-22-pre-seo"
+    awk 'FNR==NR{s=s $0 "\n"; next} /<\/head>/ && !d {printf "%s", s; d=1} {print}' site/seo/head-extra.html "$p" > "$p.tmp" && [ -s "$p.tmp" ] && cp "$p.tmp" "$p"
+    rm -f "$p.tmp"
+  fi
+done
 exit 0

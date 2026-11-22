@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Allow: /community/privacy.html
+Allow: /community/terms.html
+Allow: /community/guidelines.html
+Allow: /community/cookies.html
+Allow: /community/accessibility.html
+Disallow: /community/
+Disallow: /app.html
+
+Sitemap: https://oasis19.com/sitemap.xml
