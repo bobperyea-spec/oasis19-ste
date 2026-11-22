@@ -795,7 +795,12 @@ X.init = function () {
     shelfBtn = h('button', { class: 'btn-outline', style: 'width:100%;margin-bottom:8px', text: '🎲 Dice shelf', onclick: openShelf });
     anchor.parentNode.insertBefore(shelfBtn, anchor);
   }
-  setInterval(initBtn, 1000);
+  function syncShelfBtn() {
+    if (!shelfBtn) return;
+    var t = $('screen-table');
+    shelfBtn.style.display = (t && t.classList.contains('active')) ? '' : 'none';
+  }
+  setInterval(function () { initBtn(); syncShelfBtn(); }, 700);
 
   /* ---- show each roller's dice set on the table ---- */
   var busy = false;
@@ -991,4 +996,33 @@ X.init = function () {
       if (m) { clear(m); m.appendChild(h('div', { class: 'msg err', text: 'Please tick the box to agree to the community rules.' })); }
     }
   }, true);
+})();
+
+
+/* ===== Legal menu (hamburger at the bottom of the left sidebar) ===== */
+(function () {
+  var LINKS = [['Terms of Use', 'terms.html'], ['Privacy Policy', 'privacy.html'], ['Community Guidelines', 'guidelines.html'],
+    ['Accessibility', 'accessibility.html'], ['Cookies and Storage', 'cookies.html']];
+  var wrap = null;
+  function build() {
+    var side = document.querySelector('.sidebar-left');
+    if (wrap || !side) return;
+    var menu = h('div', { id: 'legalMenu', role: 'menu', style: 'display:none;margin-bottom:6px;border:1px solid var(--border,#ddd);border-radius:10px;background:var(--card,#fff);padding:6px' });
+    LINKS.forEach(function (l) {
+      menu.appendChild(h('a', { href: l[1], target: '_blank', rel: 'noopener', role: 'menuitem', text: l[0],
+        style: 'display:block;padding:8px 10px;font-size:.85rem;color:inherit;text-decoration:none;border-radius:6px' }));
+    });
+    var btn = h('button', { id: 'legalBtn', class: 'btn-outline', 'aria-expanded': 'false', 'aria-controls': 'legalMenu',
+      style: 'width:100%;text-align:left;font-size:.85rem', text: '☰  Legal and info',
+      onclick: function (e) {
+        e.stopPropagation();
+        var open = menu.style.display === 'none';
+        menu.style.display = open ? 'block' : 'none';
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      } });
+    wrap = h('div', { id: 'legalWrap', style: 'margin-top:auto;position:sticky;bottom:0;padding:10px 4px 6px' }, menu, btn);
+    side.appendChild(wrap);
+    document.addEventListener('click', function () { menu.style.display = 'none'; btn.setAttribute('aria-expanded', 'false'); });
+  }
+  setInterval(build, 1000);
 })();
