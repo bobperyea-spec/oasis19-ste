@@ -1,4 +1,4 @@
-/* Oasis19 table extras: Campaign files (folders + documents) and Initiative. Needs tables.js (window.TblX). */
+/* Oasis19 table extras: Campaign files (folders + documents) and Initiative. Needs tables.js (window.TblX). */ /* deploy-test 2026-11-22 */
 (function () {
 'use strict';
 var X = window.TblX;
