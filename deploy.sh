@@ -26,4 +26,10 @@ for f in index.html about.html; do
     rm -f "$p.tmp"
   fi
 done
+
+# Business profiles 2026-11-22: public page renderer (backed up once if one already exists)
+if [ -f site/business.php ]; then
+  [ -e "$D/business.php" ] && [ ! -e "$D/business.php.bak-2026-11-22" ] && cp "$D/business.php" "$D/business.php.bak-2026-11-22"
+  cp -f site/business.php "$D/business.php"
+fi
 exit 0
