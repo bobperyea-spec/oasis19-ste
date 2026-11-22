@@ -946,3 +946,49 @@ X.init = function () {
     setTimeout(function () { go('oasis', Number(id)); }, 1500);
   }, 500);
 })();
+
+/* ===== Community rules: tour step and sign-up acknowledgement ===== */
+(function () {
+  'use strict';
+  // 1) a "house rules" step in the welcome tour, before the last step
+  if (typeof window.tourSteps === 'function') {
+    var origSteps = window.tourSteps;
+    window.tourSteps = function () {
+      var steps = origSteps.apply(this, arguments);
+      if (!steps.some(function (s) { return s.title === 'Keep it friendly and safe'; })) {
+        steps.splice(Math.max(1, steps.length - 1), 0, {
+          icon: '🤝', badge: 'House rules', title: 'Keep it friendly and safe',
+          body: ['Oasis19 is for everyone, so a few rules keep it a good place to be. No hate or harassment, no threats or violence, no nudity or porn, and nothing illegal.',
+            { key: 'Break these rules and your account is banned.' }]
+        });
+      }
+      return steps;
+    };
+  }
+
+  // 2) acknowledgement checkbox on the sign-up form
+  var RULES = 'I agree to keep Oasis19 friendly: no hate, harassment, violence, nudity or porn. I understand that breaking these rules gets my account banned.';
+  var wrap = null, box = null;
+  function ensure() {
+    var form = document.getElementById('authForm'), sub = document.getElementById('authSubmit');
+    if (!form || !sub || wrap) return;
+    box = h('input', { type: 'checkbox', id: 'rulesAck' });
+    wrap = h('label', { id: 'rulesWrap', style: 'display:flex;gap:8px;align-items:flex-start;font-size:.85rem;margin:10px 0;cursor:pointer;text-align:left' }, box, h('span', { text: RULES }));
+    sub.parentNode.insertBefore(wrap, sub);
+  }
+  function sync() {
+    ensure(); if (!wrap) return;
+    var signup = typeof signupMode !== 'undefined' && signupMode;
+    wrap.style.display = signup ? 'flex' : 'none';
+  }
+  setInterval(sync, 300);
+  document.addEventListener('submit', function (e) {
+    if (!e.target || e.target.id !== 'authForm') return;
+    var signup = typeof signupMode !== 'undefined' && signupMode;
+    if (signup && box && !box.checked) {
+      e.preventDefault(); e.stopImmediatePropagation();
+      var m = document.getElementById('authMsg');
+      if (m) { clear(m); m.appendChild(h('div', { class: 'msg err', text: 'Please tick the box to agree to the community rules.' })); }
+    }
+  }, true);
+})();
