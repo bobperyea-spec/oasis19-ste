@@ -136,9 +136,30 @@ async function init() {
 
 async function route() {
   showView('loading');
-  var bRes = await sb.from('businesses').select('*').eq('owner_id', state.user.id).maybeSingle();
+  var bRes = await sb.from('businesses').select('*').eq('owner_id', state.user.id).order('created_at', { ascending: true });
   if (bRes.error) { fatal(friendlyError(bRes.error, 'We could not load your business page. Please refresh.')); return; }
-  if (bRes.data) { state.biz = bRes.data; openEditor(); return; }
+  var mine = bRes.data || [];
+  if (mine.length) {
+    var want = new URLSearchParams(location.search).get('b');
+    var pick = mine[0];
+    mine.forEach(function (x) { if (want && x.slug === want) pick = x; });
+    state.biz = pick;
+    if (mine.length > 1) {
+      var bar = document.createElement('nav');
+      bar.setAttribute('aria-label', 'Your business pages');
+      bar.style.cssText = 'display:flex;gap:12px;flex-wrap:wrap;margin:0 0 12px;font-size:.95rem;';
+      mine.forEach(function (x) {
+        var a = document.createElement('a');
+        a.href = '/community/business.html?b=' + encodeURIComponent(x.slug);
+        a.textContent = x.name;
+        if (x.id === pick.id) { a.style.fontWeight = '700'; a.setAttribute('aria-current', 'page'); }
+        bar.appendChild(a);
+      });
+      var ed = $('view-editor');
+      ed.parentNode.insertBefore(bar, ed);
+    }
+    openEditor(); return;
+  }
   var rRes = await sb.from('business_requests').select('*').eq('user_id', state.user.id)
     .order('created_at', { ascending: false }).limit(1);
   if (rRes.error) { fatal(friendlyError(rRes.error, 'We could not load your request. Please refresh.')); return; }
