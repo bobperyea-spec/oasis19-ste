@@ -165,6 +165,11 @@ async function route() {
   if (rRes.error) { fatal(friendlyError(rRes.error, 'We could not load your request. Please refresh.')); return; }
   var req = rRes.data && rRes.data[0];
   if (req && req.status !== 'done') { showPending(req); return; }
+  var md = (state.user && state.user.user_metadata) || {};
+  if (!req && md.company_name && md.website_url) {
+    var auto = await sb.rpc('request_business', { p_name: String(md.company_name).slice(0, 120), p_url: String(md.website_url).slice(0, 300) });
+    if (!auto.error) { showPending({ status: 'new', company_name: md.company_name, website_url: md.website_url }); return; }
+  }
   showView('request');
 }
 

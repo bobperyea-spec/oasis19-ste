@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Get your free business page | Oasis19</title>
+<meta name="description" content="Join Oasis19 and get a free business page built from your website. Share it anywhere and post updates to the Oasis19 community.">
+<link rel="canonical" href="https://oasis19.com/community/join.html">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="business.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="/"><img src="/images/logo-v2.png" alt="Oasis19" height="36"></a>
+  <a class="back" href="/community/">Sign in</a>
+</header>
+<main class="wrap" id="main">
+  <section class="card narrow" id="join-form-card">
+    <h1>Get your free business page</h1>
+    <p>Tell us who you are and where your website is. We build your page from it, you review it, and you approve it. Your page comes with a link you can share anywhere, and you can post updates that show up in the Oasis19 community feed.</p>
+    <form id="join-form" novalidate>
+      <div class="field">
+        <label for="j-name">Your name</label>
+        <input id="j-name" type="text" maxlength="40" autocomplete="name" required>
+        <p class="err" id="err-j-name" aria-live="polite"></p>
+      </div>
+      <div class="field">
+        <label for="j-company">Company name</label>
+        <input id="j-company" type="text" maxlength="120" autocomplete="organization" required>
+        <p class="err" id="err-j-company" aria-live="polite"></p>
+      </div>
+      <div class="field">
+        <label for="j-url">Company website</label>
+        <input id="j-url" type="text" inputmode="url" placeholder="example.com" autocomplete="url" required>
+        <p class="err" id="err-j-url" aria-live="polite"></p>
+      </div>
+      <div class="field">
+        <label for="j-email">Email</label>
+        <input id="j-email" type="email" autocomplete="email" required>
+        <p class="err" id="err-j-email" aria-live="polite"></p>
+      </div>
+      <div class="field">
+        <label for="j-pass">Password</label>
+        <input id="j-pass" type="password" minlength="10" autocomplete="new-password" required aria-describedby="j-pass-hint">
+        <p class="hint" id="j-pass-hint">At least 10 characters. Use a password you don't use anywhere else.</p>
+        <p class="err" id="err-j-pass" aria-live="polite"></p>
+      </div>
+      <div class="field">
+        <label><input id="j-agree" type="checkbox"> I agree to the <a href="/community/terms.html" target="_blank" rel="noopener">Terms</a> and <a href="/community/privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.</label>
+        <p class="err" id="err-j-agree" aria-live="polite"></p>
+      </div>
+      <button type="submit" class="btn" id="j-submit">Create my page</button>
+      <p class="msg" id="j-msg" role="status" aria-live="polite"></p>
+    </form>
+    <p class="muted">Already have an account? <a href="/community/business.html">Go to your business page</a>.</p>
+  </section>
+  <section class="card narrow" id="join-done" hidden>
+    <h1 id="done-title">Welcome to Oasis19</h1>
+    <p id="done-text"></p>
+  </section>
+</main>
+<script src="vendor-supabase.js"></script>
+<script src="join.js"></script>
+</body>
+</html>
