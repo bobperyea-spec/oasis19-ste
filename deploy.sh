@@ -32,4 +32,6 @@ if [ -f site/business.php ]; then
   [ -e "$D/business.php" ] && [ ! -e "$D/business.php.bak-2026-11-22" ] && cp "$D/business.php" "$D/business.php.bak-2026-11-22"
   cp -f site/business.php "$D/business.php"
 fi
+# Oasis19 logo for site-owned oases 2026-11-23
+mkdir -p "$D/community/img" && cp -f community/img/*.png "$D/community/img/" 2>/dev/null
 exit 0
