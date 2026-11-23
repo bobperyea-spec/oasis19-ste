@@ -248,6 +248,14 @@ function syncStatusUI() {
   $('review-banner').hidden = st !== 'review';
   $('live-note').hidden = st !== 'published';
   $('public-link').href = '/b/' + encodeURIComponent(state.biz.slug || '');
+  var shareUrl = 'https://oasis19.com/b/' + encodeURIComponent(state.biz.slug || '');
+  var enc = encodeURIComponent(shareUrl);
+  $('share-li').href = 'https://www.linkedin.com/sharing/share-offsite/?url=' + enc;
+  $('share-fb').href = 'https://www.facebook.com/sharer/sharer.php?u=' + enc;
+  $('share-x').href = 'https://twitter.com/intent/tweet?url=' + enc + '&text=' + encodeURIComponent(state.biz.name || '');
+  $('share-note').textContent = st === 'published'
+    ? 'Paste this link anywhere. Other sites will show your logo, name and tagline as a preview.'
+    : 'This link works once you publish your page.';
   $('btn-publish').hidden = st === 'published';
   $('btn-unpublish').hidden = st !== 'published';
   $('composer').hidden = st !== 'published';
@@ -630,6 +638,12 @@ function wireStatic() {
   $('biz-form').addEventListener('submit', onSave);
   $('post-form').addEventListener('submit', submitPost);
   $('f-logo-file').addEventListener('change', onLogoFile);
+  $('btn-copy-link').addEventListener('click', function () {
+    var u = 'https://oasis19.com/b/' + (state.biz && state.biz.slug || '');
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(u).then(function () { setMsg('save-msg', 'Link copied.', true); }, function () { setMsg('save-msg', 'Could not copy. Select the page address and copy it.', false); });
+    } else { $('f-slug').select(); setMsg('save-msg', 'Press Ctrl+C to copy the selected address.', true); }
+  });
   $('btn-publish').addEventListener('click', function () {
     if (collectForm()) askConfirm('publish'); else setMsg('save-msg', 'Please fix the problems marked above.', false);
   });

@@ -78,6 +78,13 @@
         <div class="field">
           <label for="f-slug">Page address</label>
           <input id="f-slug" type="text" readonly>
+          <div id="share-row" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center;">
+            <button type="button" class="btn" id="btn-copy-link">Copy link</button>
+            <a class="btn" id="share-li" target="_blank" rel="noopener noreferrer">Share on LinkedIn</a>
+            <a class="btn" id="share-fb" target="_blank" rel="noopener noreferrer">Share on Facebook</a>
+            <a class="btn" id="share-x" target="_blank" rel="noopener noreferrer">Share on X</a>
+          </div>
+          <p class="hint" id="share-note"></p>
         </div>
         <div class="field">
           <label for="f-tagline">Tagline</label>
