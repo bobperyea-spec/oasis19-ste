@@ -280,7 +280,7 @@ if ($about !== '') {
 <?php endif; ?>
 <?php if ($email !== ''): ?><dt>Email</dt><dd><a href="mailto:<?= e($email) ?>"><?= e($email) ?></a></dd><?php endif; ?>
 <?php if ($website !== ''): $host = (string)parse_url($website, PHP_URL_HOST); $host = preg_replace('/^www\./i', '', $host); ?>
-<dt>Website</dt><dd><a href="<?= e($website) ?>" rel="noopener nofollow"><?= e($host) ?></a></dd>
+<dt>Website</dt><dd><a href="<?= e($website) ?>" rel="noopener"><?= e($host) ?></a></dd>
 <?php endif; ?>
 <?php if ($address !== ''): ?>
 <dt>Address</dt><dd><?= nl2br(e($address), false) ?><br><a href="https://www.google.com/maps/dir/?api=1&amp;destination=<?= e(rawurlencode($address)) ?>" rel="noopener nofollow">Get directions</a></dd>
@@ -369,6 +369,7 @@ usort($postRows, function ($a, $b) {
 </main>
 <footer><div class="wrap">
 <p>This page is part of Oasis19, a friendly interest-first community. No ads, no algorithm.</p>
+<p><a href="https://oasis19.com/businesses">All Oasis19 businesses</a><a href="https://oasis19.com/join">List your business</a></p>
 <p><a href="https://oasis19.com/community/privacy.html">Privacy</a><a href="https://oasis19.com/community/terms.html">Terms</a><a href="https://oasis19.com/community/guidelines.html">Guidelines</a></p>
 </div></footer>
 </body>
