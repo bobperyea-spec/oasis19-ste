@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <meta name="referrer" content="no-referrer">
+  <title>Review your business page | Oasis19</title>
+  <link rel="stylesheet" href="review.css">
+</head>
+<body>
+  <main class="wrap">
+    <h1>Here's your page</h1>
+    <p id="intro" class="lede" hidden>Check it over, change anything you like, then press Approve and publish.</p>
+
+    <div id="status" class="message ok" role="status"></div>
+    <div id="alert" class="message error" role="alert"></div>
+
+    <p id="live-box" class="live" hidden>
+      Your page is live.
+      <a id="live-link" target="_blank" rel="noopener noreferrer" hidden>View your page</a>
+    </p>
+
+    <section id="card" class="card" hidden>
+      <form id="review-form" novalidate>
+        <div class="field">
+          <label for="name">Company name <span class="req">(required)</span></label>
+          <input id="name" name="name" type="text" maxlength="120" required autocomplete="organization">
+        </div>
+
+        <div class="field">
+          <label for="tagline">Tagline</label>
+          <input id="tagline" name="tagline" type="text" maxlength="160" aria-describedby="tagline-count">
+          <p id="tagline-count" class="count"></p>
+        </div>
+
+        <div class="field">
+          <label for="about">About</label>
+          <textarea id="about" name="about" rows="6" maxlength="1900" aria-describedby="about-count"></textarea>
+          <p id="about-count" class="count"></p>
+        </div>
+
+        <div class="field">
+          <label for="services">Services</label>
+          <textarea id="services" name="services" rows="6" aria-describedby="services-hint"></textarea>
+          <p id="services-hint" class="hint">One service per line. Up to 12 lines, with 80 characters or fewer on each line.</p>
+        </div>
+
+        <div class="field">
+          <label for="website">Website</label>
+          <input id="website" name="website" type="url" inputmode="url" placeholder="https://example.com" aria-describedby="website-hint">
+          <p id="website-hint" class="hint">Must start with https://</p>
+        </div>
+
+        <div class="field">
+          <label for="phone">Phone</label>
+          <input id="phone" name="phone" type="tel" autocomplete="tel">
+        </div>
+
+        <div class="field">
+          <label for="email">Email</label>
+          <input id="email" name="email" type="email" autocomplete="email">
+        </div>
+
+        <div class="field">
+          <label for="hours">Hours</label>
+          <input id="hours" name="hours" type="text">
+        </div>
+
+        <div class="field">
+          <label for="address">Address</label>
+          <input id="address" name="address" type="text" autocomplete="street-address">
+        </div>
+
+        <div class="field">
+          <label for="logo-url">Logo image link</label>
+          <input id="logo-url" name="logo_url" type="url" inputmode="url" placeholder="https://example.com/logo.png" aria-describedby="logo-hint">
+          <p id="logo-hint" class="hint">Must start with https://. A small preview appears below when the image loads.</p>
+          <img id="logo-preview" class="logo-preview" alt="Preview of your logo" hidden>
+        </div>
+
+        <div class="actions">
+          <button id="save-btn" type="submit" class="btn secondary">Save changes</button>
+          <button id="approve-btn" type="button" class="btn primary">Approve and publish</button>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <script src="review.js" defer></script>
+</body>
+</html>
