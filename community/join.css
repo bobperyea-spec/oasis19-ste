@@ -51,3 +51,4 @@ body.jn{background:#fff}
 html{scroll-behavior:smooth}
 @media (max-width:760px){.jn-herogrid{grid-template-columns:1fr}.jn-mock{transform:none;max-width:420px}.jn-bandgrid{gap:4px}.jn-stat strong{font-size:1.8rem}}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+#join-form input[type=password]{width:100%;font:inherit;padding:10px 12px;border:1px solid #8a84a3;border-radius:10px;min-height:44px;box-sizing:border-box}
