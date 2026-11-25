@@ -122,9 +122,16 @@ $oasis   = str_field($p, 'oasis_name');
 $oSlug   = str_field($p, 'oasis_slug');
 $ts      = strtotime(str_field($p, 'created_at')) ?: time();
 $flat    = trim((string)preg_replace('/\s+/u', ' ', $body));
-$title   = cut($flat, 60);
-if (mb_strlen($flat, 'UTF-8') > 60) { $title = rtrim($title, " ,.;:-") . '...'; }
-$desc    = cut($flat, 160);
+$lines   = preg_split('/\\R/u', trim($body)) ?: [];
+$first   = trim((string)($lines[0] ?? ''));
+if ($first !== '' && mb_strlen($first, 'UTF-8') <= 110 && count($lines) > 1) {
+    $title = $first;
+    $body  = trim(implode("\n", array_slice($lines, 1)));
+} else {
+    $title = cut($flat, 60);
+    if (mb_strlen($flat, 'UTF-8') > 60) { $title = rtrim($title, " ,.;:-") . '...'; }
+}
+$desc    = cut(trim((string)preg_replace('/\\s+/u', ' ', $body)), 160);
 $canonical = SITE . '/p/' . $id;
 $oasisUrl  = preg_match('/^[a-z0-9-]{2,40}$/', $oSlug) ? SITE . '/oasis/' . $oSlug . '/' : SITE . '/oasis/';
 
