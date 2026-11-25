@@ -42,4 +42,14 @@ mkdir -p "$D/community/img" && cp -f community/img/*.png "$D/community/img/" 2>/
 if [ -f site/post.php ]; then
   cp -f site/post.php "$D/post.php"
 fi
+# Home page 2026-11-25: new text landing page at the root (old index.html and about.html backed up once)
+if [ -f site/home.html ]; then
+  [ -e "$D/index.html.bak-2026-11-25-pre-home" ] || cp "$D/index.html" "$D/index.html.bak-2026-11-25-pre-home" 2>/dev/null
+  cp -f site/home.html "$D/index.html"
+  cp -f site/home.js "$D/home.js"
+  if [ -f "$D/about.html" ] && ! grep -q 'noindex-2026-11-25' "$D/about.html"; then
+    [ -e "$D/about.html.bak-2026-11-25-pre-noindex" ] || cp "$D/about.html" "$D/about.html.bak-2026-11-25-pre-noindex"
+    sed -i 's#</head>#<meta name="robots" content="noindex,follow"><!-- noindex-2026-11-25 -->\n</head>#' "$D/about.html"
+  fi
+fi
 exit 0
