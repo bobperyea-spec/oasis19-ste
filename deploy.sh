@@ -38,4 +38,8 @@ if [ -f site/businesses.php ]; then
 fi
 # Oasis19 logo for site-owned oases 2026-11-23
 mkdir -p "$D/community/img" && cp -f community/img/*.png "$D/community/img/" 2>/dev/null
+# Shared-post pages 2026-11-25: /p/{id} renderer
+if [ -f site/post.php ]; then
+  cp -f site/post.php "$D/post.php"
+fi
 exit 0
