@@ -25,7 +25,7 @@ function call(string $fn, array $args): ?array
 }
 
 // Cache for 10 minutes so the directory stays fast.
-$cache = sys_get_temp_dir() . '/oasis19-biz-directory.json';
+$cache = sys_get_temp_dir() . '/oasis19-biz-directory2.json';
 $items = null;
 if (is_file($cache) && time() - (int)filemtime($cache) < 600) {
     $d = json_decode((string)file_get_contents($cache), true);
@@ -44,7 +44,21 @@ if ($items === null) {
         if (!preg_match('/^[a-z0-9-]{3,60}$/', $slug)) { continue; }
         $b = call('public_business', ['p_slug' => $slug]);
         if (!is_array($b) || empty($b['name']) || !is_string($b['name'])) { continue; }
-        $items[] = ['slug' => $slug, 'name' => trim($b['name']), 'tagline' => isset($b['tagline']) && is_string($b['tagline']) ? trim($b['tagline']) : ''];
+        $dec = fn($v) => is_string($v) ? trim(html_entity_decode($v, ENT_QUOTES | ENT_HTML5, 'UTF-8')) : '';
+        $tag = $dec($b['tagline'] ?? '');
+        $abt = trim((string)preg_replace('/\s+/u', ' ', $dec($b['about'] ?? '')));
+        $blurb = $tag;
+        if ($blurb === '' && $abt !== '') {
+            $blurb = mb_strlen($abt, 'UTF-8') > 150 ? rtrim(mb_substr($abt, 0, 147, 'UTF-8'), " ,.;:-") . '...' : $abt;
+        }
+        $svc = [];
+        foreach ((is_array($b['services'] ?? null) ? $b['services'] : []) as $sv) {
+            if (is_string($sv) && trim($sv) !== '') { $svc[] = trim(explode(' | ', $dec($sv), 2)[0]); }
+            if (count($svc) >= 3) { break; }
+        }
+        $logo = '';
+        if (isset($b['logo_url']) && is_string($b['logo_url']) && preg_match('#^https://[^\s"<>\'\\\\]+$#', $b['logo_url'])) { $logo = $b['logo_url']; }
+        $items[] = ['slug' => $slug, 'name' => $dec($b['name']), 'tagline' => $blurb, 'services' => $svc, 'logo' => $logo];
     }
     usort($items, fn($a, $b) => strcasecmp($a['name'], $b['name']));
     @file_put_contents($cache, json_encode($items));
@@ -73,6 +87,8 @@ h1{color:#3D1F8C;margin:28px 0 8px}
 ul{list-style:none;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
 li{background:#fff;border:1px solid #e6e2f2;border-radius:14px;padding:16px}
 li a{font-weight:700;font-size:1.1rem}li p{margin:4px 0 0;color:#444}
+li .sv{font-size:.85rem;color:#3D1F8C;margin-top:10px}
+li .lg{height:56px;display:flex;align-items:center;margin-bottom:10px}li .lg img{max-height:56px;max-width:160px;width:auto;height:auto;object-fit:contain}
 .btn{display:inline-block;background:#f08a24;color:#1d1b2e;text-decoration:none;padding:10px 18px;border-radius:10px;font-weight:700}
 footer{margin:36px 0;color:#666;font-size:.9rem}footer a{margin-right:14px}
 </style>
@@ -84,7 +100,7 @@ footer{margin:36px 0;color:#666;font-size:.9rem}footer a{margin-right:14px}
 <p>Each business has its own page, a link to its website, and updates that Oasis19 members can see.</p>
 <ul>
 <?php foreach ($items as $i): ?>
-<li><a href="/b/<?= e($i['slug']) ?>"><?= e($i['name']) ?></a><?php if ($i['tagline'] !== ''): ?><p><?= e($i['tagline']) ?></p><?php endif; ?></li>
+<li><?php if (!empty($i['logo'])): ?><div class="lg"><img src="<?= e($i['logo']) ?>" alt="" loading="lazy"></div><?php endif; ?><a href="/b/<?= e($i['slug']) ?>"><?= e($i['name']) ?></a><?php if ($i['tagline'] !== ''): ?><p><?= e($i['tagline']) ?></p><?php endif; ?><?php if (!empty($i['services'])): ?><p class="sv"><?= e(implode(' · ', $i['services'])) ?></p><?php endif; ?></li>
 <?php endforeach; ?>
 </ul>
 <p><a class="btn" href="/join">List your business, free</a></p>
