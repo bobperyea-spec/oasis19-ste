@@ -16,7 +16,15 @@ function str_field($arr, string $key): string
     if (!is_array($arr) || !isset($arr[$key]) || !is_string($arr[$key])) {
         return '';
     }
-    return trim($arr[$key]);
+    return trim(html_entity_decode($arr[$key], ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+}
+
+function fmt_phone(string $p): string
+{
+    $d = preg_replace('/\D+/', '', $p) ?? '';
+    if (strlen($d) === 11 && $d[0] === '1') $d = substr($d, 1);
+    if (strlen($d) === 10) return substr($d, 0, 3) . '-' . substr($d, 3, 3) . '-' . substr($d, 6);
+    return $p;
 }
 
 function safe_url(string $u, bool $httpsOnly = false): string
@@ -142,6 +150,20 @@ $phone    = str_field($b, 'phone');
 $email    = str_field($b, 'email');
 $address  = str_field($b, 'address');
 $hours    = str_field($b, 'hours');
+$storefront = (isset($b['location_type']) && $b['location_type'] === 'storefront');
+$cityState = '';
+if (!$storefront && preg_match('/,\s*([^,]+),\s*([A-Z]{2})\b[\s\d-]*$/', $address, $m)) { $cityState = trim($m[1]) . ', ' . $m[2]; }
+$phoneRaw = $phone;
+$phone    = fmt_phone($phone);
+$aboutParas = [];
+$norm = static function (string $t): string { return strtolower(trim((string)preg_replace('/[^a-z0-9]+/i', ' ', $t))); };
+foreach (preg_split('/\R\s*\R/u', $about) ?: [] as $para) {
+    $para = trim($para);
+    if ($para === '') continue;
+    // the bold tagline repeats the first paragraph on many sites: drop that duplicate paragraph
+    if ($tagline !== '' && !$aboutParas && $norm($para) !== '' && ($norm($para) === $norm($tagline) || strpos($norm($para), $norm($tagline)) === 0 || strpos($norm($tagline), $norm($para)) === 0)) continue;
+    $aboutParas[] = $para;
+}
 $googleU  = safe_url(str_field($b, 'google_url'), true);
 if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
     $email = '';
@@ -174,7 +196,7 @@ $canonical = SITE . '/b/' . $slug;
 $descSrc = trim($tagline . ' ' . cut($about, 120));
 $desc = cut(trim(preg_replace('/\s+/u', ' ', $descSrc) ?? $descSrc), 160);
 $ogImage = $logo !== '' ? $logo : SITE . '/images/logo-v2.png';
-$aboutTrim = cut(trim(preg_replace('/\s+/u', ' ', $about) ?? $about), 500);
+$aboutTrim = cut(trim(preg_replace('/\s+/u', ' ', implode(' ', $aboutParas) ?: $about) ?? $about), 500);
 
 // ---- JSON-LD ----
 $ld = ['@context' => 'https://schema.org', '@type' => 'LocalBusiness', 'name' => $name];
@@ -183,8 +205,9 @@ $ld['url'] = $canonical;
 $ld['image'] = $ogImage;
 if ($phone !== '') $ld['telephone'] = $phone;
 if ($email !== '') $ld['email'] = $email;
-if ($address !== '') $ld['address'] = $address;
-if ($lat !== null) {
+if ($storefront && $address !== '') $ld['address'] = $address;
+if (!$storefront) $ld['areaServed'] = $cityState !== '' ? $cityState : 'United States';
+if ($storefront && $lat !== null) {
     $ld['geo'] = ['@type' => 'GeoCoordinates', 'latitude' => $lat, 'longitude' => $lng];
 }
 $same = array_values(array_filter([safe_url($website, true), $googleU]));
@@ -226,7 +249,7 @@ section{margin-top:28px}
 h2.sec{color:#3D1F8C;font-size:1.4rem;margin:0 0 14px}
 .hero{display:grid;grid-template-columns:2fr 1fr;gap:24px;align-items:start;background:none;border:0;padding:0}
 .hero>div{background:#fff;border:1px solid #e6e2f2;border-radius:14px;padding:24px}
-.logo{width:96px;height:96px;border-radius:14px;object-fit:cover;display:block;margin-bottom:14px;border:1px solid #e6e2f2}
+.logo{width:auto;height:auto;max-width:240px;max-height:110px;object-fit:contain;display:block;margin-bottom:14px}
 h1{color:#3D1F8C;margin:0 0 6px;font-size:2rem;line-height:1.2}
 .tagline{font-size:1.15rem;font-weight:500;color:#1d1b2e;margin:0 0 14px}
 .contact h2{color:#3D1F8C;font-size:1.2rem;margin:0 0 12px}
@@ -260,29 +283,28 @@ footer a{margin-right:14px}
 <main class="wrap">
 <section class="hero" aria-labelledby="biz-name">
 <div>
-<?php if ($logo !== ''): ?><img class="logo" src="<?= e($logo) ?>" alt="<?= e($name) ?> logo" width="96" height="96"><?php endif; ?>
+<?php if ($logo !== ''): ?><img class="logo" src="<?= e($logo) ?>" alt="<?= e($name) ?> logo"><?php endif; ?>
 <h1 id="biz-name"><?= e($name) ?></h1>
 <?php if ($tagline !== ''): ?><h2 class="tagline"><?= e($tagline) ?></h2><?php endif; ?>
 <?php
-if ($about !== '') {
-    foreach (preg_split('/\R\s*\R/u', $about) ?: [] as $para) {
-        $para = trim($para);
-        if ($para !== '') echo '<p>' . nl2br(e($para), false) . '</p>';
-    }
+foreach ($aboutParas as $para) {
+    echo '<p>' . nl2br(e($para), false) . '</p>';
 }
 ?>
 </div>
 <aside class="contact card" aria-labelledby="contact-h" style="align-self:start">
 <h2 id="contact-h">Contact</h2>
 <dl>
-<?php if ($phone !== ''): $tel = preg_replace('/[^0-9+]/', '', $phone); ?>
+<?php if ($phone !== ''): $tel = preg_replace('/[^0-9+]/', '', $phoneRaw); ?>
 <dt>Phone</dt><dd><a href="tel:<?= e($tel) ?>"><?= e($phone) ?></a></dd>
 <?php endif; ?>
 <?php if ($email !== ''): ?><dt>Email</dt><dd><a href="mailto:<?= e($email) ?>"><?= e($email) ?></a></dd><?php endif; ?>
 <?php if ($website !== ''): $host = (string)parse_url($website, PHP_URL_HOST); $host = preg_replace('/^www\./i', '', $host); ?>
 <dt>Website</dt><dd><a href="<?= e($website) ?>" rel="noopener"><?= e($host) ?></a></dd>
 <?php endif; ?>
-<?php if ($address !== ''): ?>
+<?php if (!$storefront): ?>
+<dt>Location</dt><dd>Service area business<?php if ($cityState !== ''): ?><br>Serving <?= e($cityState) ?> and nearby<?php endif; ?></dd>
+<?php elseif ($address !== ''): ?>
 <dt>Address</dt><dd><?= nl2br(e($address), false) ?><br><a href="https://www.google.com/maps/dir/?api=1&amp;destination=<?= e(rawurlencode($address)) ?>" rel="noopener nofollow">Get directions</a></dd>
 <?php endif; ?>
 <?php if ($hours !== ''): ?><dt>Hours</dt><dd><?= nl2br(e($hours), false) ?></dd><?php endif; ?>
@@ -308,7 +330,7 @@ if ($about !== '') {
 </section>
 <?php endif; ?>
 
-<?php if ($lat !== null || $address !== ''): ?>
+<?php if ($storefront && ($lat !== null || $address !== '')): ?>
 <section class="map" aria-labelledby="map-h">
 <h2 class="sec" id="map-h">Find us</h2>
 <?php if ($lat !== null):
