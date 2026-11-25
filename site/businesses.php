@@ -25,7 +25,7 @@ function call(string $fn, array $args): ?array
 }
 
 // Cache for 10 minutes so the directory stays fast.
-$cache = sys_get_temp_dir() . '/oasis19-biz-directory2.json';
+$cache = sys_get_temp_dir() . '/oasis19-biz-directory3.json';
 $items = null;
 if (is_file($cache) && time() - (int)filemtime($cache) < 600) {
     $d = json_decode((string)file_get_contents($cache), true);
@@ -88,7 +88,7 @@ ul{list-style:none;padding:0;display:grid;grid-template-columns:repeat(auto-fill
 li{background:#fff;border:1px solid #e6e2f2;border-radius:14px;padding:16px}
 li a{font-weight:700;font-size:1.1rem}li p{margin:4px 0 0;color:#444}
 li .sv{font-size:.85rem;color:#3D1F8C;margin-top:10px}
-li .lg{height:56px;display:flex;align-items:center;margin-bottom:10px}li .lg img{max-height:56px;max-width:160px;width:auto;height:auto;object-fit:contain}
+li .lg{height:56px;display:flex;align-items:center;margin-bottom:10px}li .mono{width:56px;height:56px;border-radius:14px;background:#3D1F8C;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.2rem}li .lg img{max-height:56px;max-width:160px;width:auto;height:auto;object-fit:contain}
 .btn{display:inline-block;background:#f08a24;color:#1d1b2e;text-decoration:none;padding:10px 18px;border-radius:10px;font-weight:700}
 footer{margin:36px 0;color:#666;font-size:.9rem}footer a{margin-right:14px}
 </style>
@@ -100,7 +100,7 @@ footer{margin:36px 0;color:#666;font-size:.9rem}footer a{margin-right:14px}
 <p>Each business has its own page, a link to its website, and updates that Oasis19 members can see.</p>
 <ul>
 <?php foreach ($items as $i): ?>
-<li><?php if (!empty($i['logo'])): ?><div class="lg"><img src="<?= e($i['logo']) ?>" alt="" loading="lazy"></div><?php endif; ?><a href="/b/<?= e($i['slug']) ?>"><?= e($i['name']) ?></a><?php if ($i['tagline'] !== ''): ?><p><?= e($i['tagline']) ?></p><?php endif; ?><?php if (!empty($i['services'])): ?><p class="sv"><?= e(implode(' · ', $i['services'])) ?></p><?php endif; ?></li>
+<li><?php if (!empty($i['logo'])): ?><div class="lg"><img src="<?= e($i['logo']) ?>" alt="" loading="lazy"></div><?php else: $ini = ''; foreach (array_slice(preg_split('/[^\p{L}\p{N}]+/u', $i['name'], -1, PREG_SPLIT_NO_EMPTY) ?: [], 0, 2) as $w) { $ini .= mb_strtoupper(mb_substr($w, 0, 1, 'UTF-8'), 'UTF-8'); } ?><div class="lg"><span class="mono" aria-hidden="true"><?= e($ini) ?></span></div><?php endif; ?><a href="/b/<?= e($i['slug']) ?>"><?= e($i['name']) ?></a><?php if ($i['tagline'] !== ''): ?><p><?= e($i['tagline']) ?></p><?php endif; ?><?php if (!empty($i['services'])): ?><p class="sv"><?= e(implode(' · ', $i['services'])) ?></p><?php endif; ?></li>
 <?php endforeach; ?>
 </ul>
 <p><a class="btn" href="/join">List your business, free</a></p>
