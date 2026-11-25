@@ -1,8 +1,8 @@
 // Oasis19 service worker: caches the app shell so it opens instantly and
 // shows a friendly page offline. Posts and news always come from the network.
 // Also receives photos/text shared from the phone's share sheet.
-const CACHE = 'oasis19-shell-v30';
-const SHELL = ['/community/', '/community/index.html', '/community/app.js?v=29', '/community/tables.js?v=22', '/community/tables-extras.js?v=22', '/community/community.css?v=25', '/community/vendor-supabase.js', '/community/icon-192.png', '/community/icon-512.png'];
+const CACHE = 'oasis19-shell-v31';
+const SHELL = ['/community/', '/community/index.html', '/community/app.js?v=30', '/community/tables.js?v=22', '/community/tables-extras.js?v=22', '/community/community.css?v=26', '/community/vendor-supabase.js', '/community/icon-192.png', '/community/icon-512.png'];
 
 self.addEventListener('install', (e) => {
 e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
