@@ -62,4 +62,8 @@ if [ -f site/guide.php ]; then
     printf '%s\n' "<?php \$GUIDE_SLUG = \"$S\"; require dirname(__DIR__, 2) . \"/guide.php\";" > "$D/guides/$S/index.php"
   done
 fi
+# Team page headers 2026-11-26: geometric banners in team colors (no logos)
+if [ -d community/img/team-headers ]; then
+  mkdir -p "$D/community/img/team-headers" && cp -f community/img/team-headers/*.svg "$D/community/img/team-headers/" 2>/dev/null
+fi
 exit 0
