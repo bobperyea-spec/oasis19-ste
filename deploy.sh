@@ -52,4 +52,14 @@ if [ -f site/home.html ]; then
     sed -i 's#</head>#<meta name="robots" content="noindex,follow"><!-- noindex-2026-11-25 -->\n</head>#' "$D/about.html"
   fi
 fi
+# Guides 2026-11-26: /guides/ index and /guides/{slug}/ pages rendered by guide.php (no .htaccess change needed)
+if [ -f site/guide.php ]; then
+  cp -f site/guide.php "$D/guide.php"
+  mkdir -p "$D/guides"
+  printf '%s\n' '<?php $GUIDE_SLUG = ""; require dirname(__DIR__) . "/guide.php";' > "$D/guides/index.php"
+  for S in ad-free-chronological-social-media facebook-groups-alternative privacy-and-your-posts new-social-media-sites; do
+    mkdir -p "$D/guides/$S"
+    printf '%s\n' "<?php \$GUIDE_SLUG = \"$S\"; require dirname(__DIR__, 2) . \"/guide.php\";" > "$D/guides/$S/index.php"
+  done
+fi
 exit 0
